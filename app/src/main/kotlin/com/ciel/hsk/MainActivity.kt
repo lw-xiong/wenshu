@@ -280,6 +280,33 @@ class MainActivity : Activity() {
         return done
     }
 
+    private fun completedWords(lessonId: String): MutableSet<Int> {
+        return try {
+            val array = org.json.JSONArray(prefs.getString("completed:${lessonId}", "[]"))
+            val set = mutableSetOf<Int>()
+            repeat(array.length()) { set.add(array.getInt(it)) }
+            set
+        } catch (_: Exception) {
+            mutableSetOf()
+        }
+    }
+
+    private fun saveCompleted(lessonId: String, completed: Set<Int>) {
+        val arr = org.json.JSONArray()
+        completed.sorted().forEach { arr.put(it) }
+        prefs.edit().putString("completed:${lessonId}", arr.toString()).apply()
+    }
+
+    private fun restartLesson(mod: HskModule, lessonIndex: Int, lesson: HskLesson) {
+        prefs.edit()
+            .putBoolean("done:${lesson.id}", false)
+            .putString("completed:${lesson.id}", "[]")
+            .putInt("card_progress:${lesson.id}", 0)
+            .apply()
+        container.removeAllViews()
+        container.addView(buildLessonScreen(this, mod, lessonIndex, lesson))
+    }
+
     private fun currentStats(): PlayerStats {
         val lessonsDone = HskData.modules().sumOf { mod ->
             mod.lessons.count { prefs.getBoolean("done:${it.id}", false) }
@@ -671,6 +698,15 @@ class MainActivity : Activity() {
         })
         card.addView(tv(context, lesson.sub, 13f, C_MUTED(), false))
 
+        // Lesson progress — how many of this lesson's words have been reviewed
+        val totalWords = lesson.words.size
+        val completed = if (done) totalWords else completedWords(lesson.id).size
+        val pct = if (totalWords > 0) completed * 100 / totalWords else 0
+        card.addView(tv(context, "Progress", 11f, C_MUTED(), true).apply {
+            setPadding(0, dp(context, 8), 0, dp(context, 6))
+        })
+        card.addView(progressBar(context, pct))
+
         card.setOnClickListener { openLesson(mod.level, mod.lessons.indexOf(lesson)) }
 
         return card
@@ -733,16 +769,23 @@ class MainActivity : Activity() {
 
         content.addView(top)
 
-        // Progress
+        // Progress — based on how many words in this lesson have been reviewed
         val totalWords = lesson.words.size
         val progressKey = "card_progress:${lesson.id}"
+        val done = prefs.getBoolean("done:${lesson.id}", false)
+        var completed = completedWords(lesson.id)
         var currentIdx = prefs.getInt(progressKey, 0).coerceIn(0, totalWords - 1)
         var revealed = false
 
+        val progressBarRef = progressBar(context, if (done) 100 else if (totalWords > 0) completed.size * 100 / totalWords else 0)
         content.addView(tv(context, "Progress", 11f, C_MUTED(), true).apply {
             setPadding(0, 0, 0, dp(context, 6))
         })
-        content.addView(progressBar(context, if (totalWords > 0) ((currentIdx + 1) * 100 / totalWords).coerceAtMost(100) else 100))
+        content.addView(progressBarRef)
+
+        fun refreshProgress() {
+            progressBarRef.progress = if (done) 100 else if (totalWords > 0) completed.size * 100 / totalWords else 0
+        }
 
         // Flashcard
         val cardStage = LinearLayout(context)
@@ -809,6 +852,14 @@ class MainActivity : Activity() {
                     meaning.animate().rotationY(360f).setDuration(200).start()
                 }.start()
                 revealed = true
+                // Mark this word as reviewed and update progress
+                if (completed.add(currentIdx)) {
+                    saveCompleted(lesson.id, completed)
+                    if (completed.size >= totalWords) {
+                        prefs.edit().putBoolean("done:${lesson.id}", true).apply()
+                    }
+                    refreshProgress()
+                }
             } else {
                 // Show hanzi: hide meaning, show hanzi
                 meaning.animate().rotationY(90f).setDuration(200).withEndAction {
@@ -837,7 +888,7 @@ class MainActivity : Activity() {
         val btnNext = Button(context)
         val btnPrev = Button(context)
 
-        btnNext.text = if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
+        btnNext.text = if (done) "Restart lesson" else if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
         btnNext.textSize = 15f
         btnNext.setTextColor(Color.parseColor("#FFFFFF"))
         btnNext.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
@@ -863,7 +914,7 @@ class MainActivity : Activity() {
         btnPrev.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         btnPrev.gravity = Gravity.CENTER
         btnPrev.isAllCaps = false
-        btnPrev.isEnabled = currentIdx > 0
+        btnPrev.isEnabled = currentIdx > 0 && !done
 
         // Shared navigation logic
         fun goTo(index: Int) {
@@ -883,14 +934,18 @@ class MainActivity : Activity() {
             pinyin.text = lesson.words[currentIdx].pinyin
             meaning.text = lesson.words[currentIdx].meaning
             updateNavButtons(btnPrev, btnNext, currentIdx, totalWords)
-            btnNext.text = if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
+            btnNext.text = if (done) "Restart lesson" else if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
         }
 
         btnNext.setOnClickListener {
-            if (currentIdx >= totalWords - 1) {
-                // At last word: mark done and go to next lesson
-                prefs.edit().putBoolean("done:${lesson.id}", true).apply()
-                prefs.edit().putInt(progressKey, totalWords).apply()
+            if (done) {
+                restartLesson(mod, lessonIndex, lesson)
+            } else if (currentIdx >= totalWords - 1) {
+                // At last word: mark this word reviewed, mark lesson done, go to next lesson
+                completed.add(currentIdx)
+                saveCompleted(lesson.id, completed)
+                prefs.edit().putBoolean("done:${lesson.id}", true).putInt(progressKey, totalWords).apply()
+                refreshProgress()
                 val nextIdx = lessonIndex + 1
                 if (nextIdx < mod.lessons.size) {
                     openLesson(mod.level, nextIdx)
