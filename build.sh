@@ -8,7 +8,7 @@ PKG=com.ciel.hsk
 cd "$(dirname "$0")"
 
 echo "=== Cleaning build artifacts ==="
-rm -rf build/compiled build/R_gen build/classes_java build/classes_kotlin build/dex build/app_linked.apk build/app_unsigned.apk build/hsk-app.apk
+rm -rf build/compiled build/R_gen build/classes_java build/classes_kotlin build/dex build/app_linked.apk build/app_unsigned.apk build/hsk-app.apk build/wenshu-v*.apk
 mkdir -p build/compiled build/R_gen build/classes_java build/classes_kotlin build/dex
 
 echo "=== Step 1: aapt2 compile ==="
@@ -58,6 +58,9 @@ print('classes.dex + assets added')
 "
 
 echo "=== Step 7: sign ==="
+# Derive APK filename from manifest versionName
+VERSION_NAME=$(grep 'versionName=' app/src/main/AndroidManifest.xml | sed -E 's/.*versionName="([^"]+)".*/\1/')
+APK_OUT="build/wenshu-v${VERSION_NAME}.apk"
 if [[ ! -f build/hsk.keystore ]]; then
     keytool -genkeypair -keystore build/hsk.keystore -alias hsk \
         -keyalg RSA -keysize 2048 -validity 10000 \
@@ -69,14 +72,14 @@ fi
     --ks-key-alias hsk \
     --ks-pass pass:android \
     --key-pass pass:android \
-    --out build/hsk-app.apk \
+    --out "$APK_OUT" \
     build/app_unsigned.apk
 
 echo "=== Step 8: verify ==="
-"$ANDROID_SDK/build-tools/34.0.0/apksigner" verify --verbose build/hsk-app.apk
-"$ANDROID_SDK/build-tools/34.0.0/aapt2" dump badging build/hsk-app.apk | sed -n '1,14p'
+"$ANDROID_SDK/build-tools/34.0.0/apksigner" verify --verbose "$APK_OUT"
+"$ANDROID_SDK/build-tools/34.0.0/aapt2" dump badging "$APK_OUT" | sed -n '1,14p'
 
 echo ""
 echo "=== BUILD COMPLETE ==="
-echo "APK: build/hsk-app.apk"
-echo "Install: adb install -r build/hsk-app.apk"
+echo "APK: $APK_OUT"
+echo "Install: adb install -r $APK_OUT"
