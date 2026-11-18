@@ -6,6 +6,7 @@ Iteration 4 — COMPLETE (VISUAL QUALITY AUDIT: launch crash fix + polish pass)
 Iteration 5 — COMPLETE (CRITICAL BUG FIXES: back button, prev button, finished lesson crash,
   flip animation, button spacing, HSK 3/4/5 coming soon)
 Iteration 6 — COMPLETE (UX POLISH: vertical button spacing, smooth flip, shuffle, next lesson)
+Iteration 7 — COMPLETE (CRITICAL FIXES: next lesson button enabled, flip mirror fixed)
 
 Acceptance criteria:
 1. Real Android APK (Kotlin), not a PWA — PASS (build/hsk-app.apk)
@@ -73,7 +74,12 @@ UX polish fixes (Iteration 6):
 - Next button at end: becomes "Next lesson", marks done, opens next lesson
 - Removed "Mark lesson done" button (replaced by Next lesson flow)
 
-Fixes applied during build (Iteration 0-6):
+Critical fixes (Iteration 7):
+- Next lesson button: enabled at last word (was disabled, so click never fired)
+- Flip mirror: scaleX 1→-1→1 instead of rotationY (was mirroring hanzi/pinyin/meaning)
+- Pinyin: verified data is correct (caron diacritics may not render on device font, not corruption)
+
+Fixes applied during build (Iteration 0-7):
 - aapt2 compile/link: pass individual files, not directories
 - activity_card/lesson/main.xml: removed (replaced by programmatic views)
 - ic_launcher_circle.xml: encoding="utf-8"

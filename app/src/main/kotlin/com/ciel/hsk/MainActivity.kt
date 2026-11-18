@@ -230,7 +230,7 @@ class MainActivity : Activity() {
 
     private fun updateNavButtons(btnPrev: TextView, btnNext: Button, currentIdx: Int, totalWords: Int) {
         btnPrev.isEnabled = currentIdx > 0
-        btnNext.isEnabled = currentIdx < totalWords - 1
+        btnNext.isEnabled = true // Always enabled: at last word becomes "Next lesson"
     }
 
     /* ========================================================================
@@ -650,7 +650,7 @@ class MainActivity : Activity() {
         cardStage.addView(meaning)
 
         cardStage.setOnClickListener {
-            val anim = android.animation.ObjectAnimator.ofFloat(cardStage, "rotationY", 0f, 180f)
+            val anim = android.animation.ObjectAnimator.ofFloat(cardStage, "scaleX", 1f, -1f)
             anim.duration = 400
             var swapped = false
             anim.addUpdateListener { animation ->
@@ -661,6 +661,11 @@ class MainActivity : Activity() {
                     hint.visibility = if (revealed) View.GONE else View.VISIBLE
                 }
             }
+            anim.addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    cardStage.scaleX = 1f
+                }
+            })
             anim.start()
         }
 
