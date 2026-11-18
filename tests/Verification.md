@@ -23,7 +23,9 @@
 | Word and sentence matching | Four pairs per board; separate interactive two-column UI | JVM data checks + source route check |
 | XP and coins | Zero, partial, and perfect scoring | JVM reward checks |
 | Achievements | All locked at zero; all unlocked at milestone values | JVM checks |
-| Version metadata | `versionCode=4`, `versionName=1.2.0` | APK badging |
+| Equal bottom-nav columns | Explicit `weightSum`, weighted full-height items, full-width centered icon/labels | Source check + build |
+| Theme switch preserves view | No `recreate()`; active tab and scroll offset restored after in-place rebuild | Source check + build |
+| Version metadata | `versionCode=5`, `versionName=1.2.1` | APK badging |
 | Runtime visibility and clicks | Requires physical device or emulator | Not exercised: no Android target connected |
 
 Research sources and explicit feature limits: [../docs/practice-research.md](../docs/practice-research.md).

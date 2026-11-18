@@ -24,6 +24,7 @@ import android.widget.Toast
 class MainActivity : Activity() {
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var rootView: LinearLayout
     private lateinit var container: FrameLayout
     private lateinit var navBar: LinearLayout
     private var currentTab: Int = -1
@@ -58,7 +59,8 @@ class MainActivity : Activity() {
         prefs = getSharedPreferences("hsk_app", Context.MODE_PRIVATE)
         applySystemBars()
 
-        val root = LinearLayout(this)
+        rootView = LinearLayout(this)
+        val root = rootView
         root.orientation = LinearLayout.VERTICAL
         root.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -130,9 +132,27 @@ class MainActivity : Activity() {
     }
 
     private fun setDarkMode(dark: Boolean) {
+        val tab = if (currentTab in 0..4) currentTab else TAB_PROFILE
+        val scrollY = currentScrollView()?.scrollY ?: 0
         prefs.edit().putBoolean("dark_mode", dark).apply()
         applySystemBars()
-        recreate()
+        rootView.setBackgroundColor(C_BG())
+
+        val navIndex = rootView.indexOfChild(navBar)
+        rootView.removeView(navBar)
+        navBar = buildNavBar()
+        rootView.addView(navBar, navIndex)
+
+        currentTab = -1
+        switchTab(tab)
+        currentScrollView()?.let { scroll ->
+            scroll.post { scroll.scrollTo(0, scrollY) }
+        }
+    }
+
+    private fun currentScrollView(): ScrollView? {
+        val screen = container.getChildAt(0) as? LinearLayout ?: return null
+        return screen.getChildAt(0) as? ScrollView
     }
 
     /* ---------- Bottom navigation ---------- */
@@ -140,22 +160,26 @@ class MainActivity : Activity() {
     private fun buildNavBar(): LinearLayout {
         val bar = LinearLayout(this)
         bar.orientation = LinearLayout.HORIZONTAL
+        bar.weightSum = tabLabels.size.toFloat()
+        bar.gravity = Gravity.CENTER
         bar.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             dp(this, 64)
         )
         bar.setBackgroundColor(C_CARD())
-        bar.setPadding(dp(this, 8), dp(this, 4), dp(this, 8), dp(this, 4))
+        bar.setPadding(0, dp(this, 4), 0, dp(this, 4))
         bar.elevation = dp(this, 8).toFloat()
 
         for (i in tabLabels.indices) {
             val item = LinearLayout(this)
             item.orientation = LinearLayout.VERTICAL
-            val ip = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
-            ip.weight = 1f
-            item.layoutParams = ip
+            item.layoutParams = LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1f
+            )
             item.gravity = Gravity.CENTER
-            item.setPadding(dp(this, 4), dp(this, 4), dp(this, 4), dp(this, 4))
+            item.setPadding(0, dp(this, 4), 0, dp(this, 4))
             item.tag = i
             item.contentDescription = "tab_${tabLabels[i].lowercase()}"
 
@@ -164,17 +188,28 @@ class MainActivity : Activity() {
             icon.textSize = 18f
             icon.setTypeface(icon.typeface, Typeface.BOLD)
             icon.setTextColor(C_MUTED())
+            icon.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            icon.gravity = Gravity.CENTER
+            icon.textAlignment = View.TEXT_ALIGNMENT_CENTER
 
             val label = TextView(this)
             label.text = tabLabels[i]
             label.textSize = 11f
             label.setTypeface(label.typeface, Typeface.BOLD)
             label.setTextColor(C_MUTED())
+            label.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            label.gravity = Gravity.CENTER
+            label.textAlignment = View.TEXT_ALIGNMENT_CENTER
 
             item.addView(icon)
             item.addView(label)
             item.setOnClickListener { switchTab(i) }
-
             bar.addView(item)
         }
 

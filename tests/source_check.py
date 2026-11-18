@@ -38,4 +38,11 @@ assert 'QuestionType.FILL_BLANK' in practice
 assert 'QuestionType.SENTENCE_ORDER' in practice
 assert 'fun rewards(mode: String, score: Int, total: Int)' in practice
 
-print("PASS: navigation; true-dark system bars; Switch; aligned buttons; all practice routes; rewards")
+assert 'bar.weightSum = tabLabels.size.toFloat()' in text
+assert 'icon.textAlignment = View.TEXT_ALIGNMENT_CENTER' in text
+assert 'label.textAlignment = View.TEXT_ALIGNMENT_CENTER' in text
+assert 'val tab = if (currentTab in 0..4) currentTab else TAB_PROFILE' in text
+assert 'val scrollY = currentScrollView()?.scrollY ?: 0' in text
+assert 'recreate()' not in text
+
+print("PASS: equal nav columns; in-place theme switch with scroll; all practice and reward checks")
