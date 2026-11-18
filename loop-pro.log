@@ -2,6 +2,7 @@ LOOP-PRO LOG — HSK Android APK (Kotlin)
 Iteration 1 — COMPLETE (crash fixed, APK rebuilt with Kotlin stdlib)
 Iteration 2 — COMPLETE (UI rehaul: winding path, node states, progress tracking)
 Iteration 3 — COMPLETE (MASTER DIRECTIVE: full UI/UX overhaul, light theme, bottom nav)
+Iteration 4 — COMPLETE (VISUAL QUALITY AUDIT: launch crash fix + polish pass)
 
 Acceptance criteria:
 1. Real Android APK (Kotlin), not a PWA — PASS (build/hsk-app.apk)
@@ -19,12 +20,16 @@ Acceptance criteria:
 12. Profile screen — PASS (avatar, stats)
 13. Verified: signature v1/v2/v3, aapt2 badging, classes.dex present — PASS
 14. sdkVersion:'21' targetSdkVersion:'34' — PASS (compatible with Poco F4 GT / Android 12–14)
-15. App opens without crashing — PASS (Kotlin stdlib bundled in DEX)
+15. App opens without crashing — PASS (Kotlin stdlib bundled in DEX + currentTab=-1 init)
 16. Works offline (no network deps) — PASS
 17. Consistent design system across all screens — PASS
 18. Chinese characters and pinyin render correctly — PASS
 19. Existing vocabulary/lesson data preserved — PASS
 20. Progress persists across restarts — PASS (SharedPreferences)
+21. Cards have rounded corners + border (card_bg.xml) — PASS
+22. Buttons have rounded corners (btn_primary.xml, btn_ghost.xml, btn_success.xml) — PASS
+23. Native ProgressBar with vermilion tint — PASS
+24. Search input has styled background (input_bg.xml) — PASS
 
 Build steps (all verified):
 - aapt2 compile: resource files — EXIT 0
@@ -35,24 +40,23 @@ Build steps (all verified):
 - apksigner: v1/v2/v3 signature — Verifies
 - aapt2 dump badging: package=com.ciel.hsk, label='文 HSK', activity=MainActivity — PASS
 
-UI overhaul changes (Iteration 3):
-- Design system: colors.xml (bg_primary #F8F6F2, bg_surface #FFFFFF, text_primary #171717,
-  text_secondary #77736E, accent_primary #C62828, accent_gold #D6A84F, success #36845B,
-  border #E9E5DF, hanzi #171717, pinyin #77736E); dimens.xml spacing tokens; themes.xml light theme
-- MainActivity: single-activity container with bottom nav bar (5 tabs), view switching
-- HomeScreen: dashboard — greeting, progress card (lessons done, words total, progress bar),
-  Continue learning button, HSK course cards
-- LearnScreen: HSK course lesson cards with done/available states, tap to open lesson
-- LessonScreen: hanzi (64sp focal), pinyin beneath, meaning tap-to-reveal, progress bar,
-  prev/next navigation, mark-lesson-done with persistence
-- VocabScreen: searchable vocabulary library with HSK level tags
-- ReviewScreen: marked review words list
-- ProfileScreen: avatar, learner identity, stats
-- Removed dead code: LessonActivity, CardActivity, FlipCardView, PathViews, old layout XMLs
+Visual audit fixes (Iteration 4):
+- BUG FIX: currentTab initialized to -1 (was 0, causing switchTab(TAB_HOME) early return → blank screen)
+- Cards: card_bg.xml (white rounded 16dp + 1dp #E9E5DF border) replaces flat setBackgroundColor
+- Buttons: btn_primary.xml (vermilion rounded 12dp), btn_ghost.xml (transparent + border),
+  btn_success.xml (green rounded 12dp); all isAllCaps=false
+- ProgressBar: native ProgressBar with setProgressTintList/setProgressBackgroundTintList (vermilion)
+- Search: input_bg.xml (white rounded 10dp + border) replaces default android editbox
+- Back buttons: TextView with transparent background (no default button styling)
+- Navigation: letter badges (H, L, V, R, P) instead of unicode symbols
+- Spacing: dp() helper (Int signature) for consistent dp-to-px conversion
+- Lesson card: whole card tappable, hint text below, tap-to-reveal meaning
+- Avatar: TextView with btn_primary background (not Button)
+- Done button: btn_success.xml when at last word, btn_primary.xml otherwise
 
-Fixes applied during build (Iteration 0-3):
+Fixes applied during build (Iteration 0-4):
 - aapt2 compile/link: pass individual files, not directories
-- activity_card/lesson/main.xml: removed (replaced by programmatic views, old color refs)
+- activity_card/lesson/main.xml: removed (replaced by programmatic views)
 - ic_launcher_circle.xml: encoding="utf-8"
 - FlipCardView: custom Animation with Camera (Rotate3dAnimation not in SDK)
 - Activities: android.app.Activity (no androidx/Gradle)
@@ -60,6 +64,8 @@ Fixes applied during build (Iteration 0-3):
 - Kotlin stdlib: bundled in DEX (was missing → instant crash on open)
 - uses-sdk: minSdkVersion=21 / targetSdkVersion=34 (was missing → "not compatible")
 - LinearLayout.LayoutParams.weight used instead of View.weight
+- dp(): Int parameter (was Float, caused argument type mismatch on all Int literals)
+- ProgressBar tint: setProgressTintList/setProgressBackgroundTintList (method names, not properties)
 
 Root cause of instant crash: Kotlin standard library was compiled against but not bundled in the APK.
 Every Kotlin class (data classes, listOf, object HskData) threw NoClassDefFoundError at runtime.

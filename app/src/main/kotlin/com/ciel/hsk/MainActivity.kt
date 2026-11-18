@@ -3,6 +3,7 @@ package com.ciel.hsk
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -15,6 +16,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -24,7 +26,7 @@ class MainActivity : Activity() {
     private lateinit var prefs: SharedPreferences
     private lateinit var container: FrameLayout
     private lateinit var navBar: LinearLayout
-    private var currentTab: Int = 0
+    private var currentTab: Int = -1
 
     private val TAB_HOME = 0
     private val TAB_LEARN = 1
@@ -33,7 +35,21 @@ class MainActivity : Activity() {
     private val TAB_PROFILE = 4
 
     private val tabLabels = listOf("Home", "Learn", "Vocabulary", "Review", "Profile")
-    private val tabIcons = listOf("◆", "▩", "▤", "↻", "◯")
+
+    // Design tokens
+    private val C_BG = Color.parseColor("#F8F6F2")
+    private val C_CARD = Color.parseColor("#FFFFFF")
+    private val C_TEXT = Color.parseColor("#171717")
+    private val C_MUTED = Color.parseColor("#77736E")
+    private val C_ACCENT = Color.parseColor("#C62828")
+    private val C_GOLD = Color.parseColor("#D6A84F")
+    private val C_SUCCESS = Color.parseColor("#36845B")
+    private val C_BORDER = Color.parseColor("#E9E5DF")
+    private val C_HANZI = Color.parseColor("#171717")
+    private val C_PINYIN = Color.parseColor("#77736E")
+    private val C_LOCKED = Color.parseColor("#C9C4BD")
+    private val C_DONE_BG = Color.parseColor("#F1F7EE")
+    private val C_DONE_TEXT = Color.parseColor("#36845B")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,7 +61,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
+        root.setBackgroundColor(C_BG)
 
         container = FrameLayout(this)
         container.layoutParams = ViewGroup.LayoutParams(
@@ -62,6 +78,10 @@ class MainActivity : Activity() {
         switchTab(TAB_HOME)
     }
 
+    private fun dp(context: Context, d: Int): Int {
+        return (d * context.resources.displayMetrics.density).toInt()
+    }
+
     /* ---------- Bottom navigation ---------- */
 
     private fun buildNavBar(): LinearLayout {
@@ -69,10 +89,10 @@ class MainActivity : Activity() {
         bar.orientation = LinearLayout.HORIZONTAL
         bar.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            dp(this, 56)
         )
-        bar.setBackgroundColor(Color.parseColor("#FFFFFF"))
-        bar.setPadding(8, 8, 8, 8)
+        bar.setBackgroundColor(C_CARD)
+        bar.setPadding(dp(this, 8), dp(this, 8), dp(this, 8), dp(this, 8))
 
         for (i in tabLabels.indices) {
             val item = LinearLayout(this)
@@ -81,19 +101,20 @@ class MainActivity : Activity() {
             ip.weight = 1f
             item.layoutParams = ip
             item.gravity = Gravity.CENTER
-            item.setPadding(4, 4, 4, 4)
+            item.setPadding(dp(this, 4), dp(this, 4), dp(this, 4), dp(this, 4))
             item.tag = i
 
             val icon = TextView(this)
-            icon.text = tabIcons[i]
-            icon.textSize = 20f
-            icon.setTextColor(Color.parseColor("#77736E"))
+            icon.text = tabLabels[i].first().toString().uppercase()
+            icon.textSize = 18f
+            icon.setTypeface(icon.typeface, Typeface.BOLD)
+            icon.setTextColor(C_MUTED)
 
             val label = TextView(this)
             label.text = tabLabels[i]
             label.textSize = 11f
             label.setTypeface(label.typeface, Typeface.BOLD)
-            label.setTextColor(Color.parseColor("#77736E"))
+            label.setTextColor(C_MUTED)
 
             item.addView(icon)
             item.addView(label)
@@ -111,8 +132,9 @@ class MainActivity : Activity() {
             val icon = item.getChildAt(0) as TextView
             val label = item.getChildAt(1) as TextView
             val active = i == currentTab
-            icon.setTextColor(if (active) Color.parseColor("#C62828") else Color.parseColor("#77736E"))
-            label.setTextColor(if (active) Color.parseColor("#C62828") else Color.parseColor("#77736E"))
+            val c = if (active) C_ACCENT else C_MUTED
+            icon.setTextColor(c)
+            label.setTextColor(c)
         }
     }
 
@@ -146,8 +168,8 @@ class MainActivity : Activity() {
     private fun card(context: Context): LinearLayout {
         val c = LinearLayout(context)
         c.orientation = LinearLayout.VERTICAL
-        c.setBackgroundColor(Color.parseColor("#FFFFFF"))
-        c.setPadding(16, 16, 16, 16)
+        c.setBackgroundResource(R.drawable.card_bg)
+        c.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16))
         return c
     }
 
@@ -166,26 +188,44 @@ class MainActivity : Activity() {
         return p
     }
 
-    private fun progressBar(context: Context, pct: Int): LinearLayout {
-        val wrap = LinearLayout(context)
-        wrap.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 6
+    private fun progressBar(context: Context, pct: Int): ProgressBar {
+        val pb = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal)
+        pb.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(context, 5)
         )
+        pb.max = 100
+        pb.progress = pct.coerceIn(0, 100)
+        pb.setProgressTintList(ColorStateList.valueOf(C_ACCENT))
+        pb.setProgressBackgroundTintList(ColorStateList.valueOf(C_BORDER))
+        return pb
+    }
 
-        val track = View(context)
-        track.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 6
+    private fun backButton(context: Context, onClick: () -> Unit): TextView {
+        val b = TextView(context)
+        b.text = "←"
+        b.textSize = 24f
+        b.setTextColor(C_MUTED)
+        b.gravity = Gravity.CENTER
+        b.layoutParams = ViewGroup.LayoutParams(dp(context, 44), dp(context, 44))
+        b.setOnClickListener { onClick() }
+        return b
+    }
+
+    private fun primaryButton(context: Context, text: String, onClick: () -> Unit): Button {
+        val b = Button(context)
+        b.text = text
+        b.textSize = 15f
+        b.setTextColor(Color.parseColor("#FFFFFF"))
+        b.setBackgroundResource(R.drawable.btn_primary)
+        b.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        track.setBackgroundColor(Color.parseColor("#E9E5DF"))
-
-        val fill = View(context)
-        val width = (pct * context.resources.displayMetrics.widthPixels / 100).coerceIn(0, context.resources.displayMetrics.widthPixels)
-        fill.layoutParams = ViewGroup.LayoutParams(width, 6)
-        fill.setBackgroundColor(Color.parseColor("#C62828"))
-
-        wrap.addView(track)
-        wrap.addView(fill)
-        return wrap
+        b.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
+        b.isAllCaps = false
+        b.setOnClickListener { onClick() }
+        return b
     }
 
     /* ========================================================================
@@ -199,8 +239,8 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
-        root.setPadding(16, 0, 16, 0)
+        root.setBackgroundColor(C_BG)
+        root.setPadding(dp(context, 16), 0, dp(context, 16), 0)
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -214,12 +254,13 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        content.setPadding(0, 16, 0, 80)
+        content.setPadding(0, dp(context, 20), 0, dp(context, 80))
 
-        content.addView(tv(context, "Hi there.", 22f, Color.parseColor("#171717"), true))
+        // Greeting
+        content.addView(tv(context, "Welcome back.", 24f, C_TEXT, true))
 
-        val sub = tv(context, "Ready to continue with Mandarin?", 14f, Color.parseColor("#77736E"), false)
-        sub.setPadding(0, 4, 0, 20)
+        val sub = tv(context, "Keep building your Mandarin.", 14f, C_MUTED, false)
+        sub.setPadding(0, dp(context, 6), 0, dp(context, 20))
         content.addView(sub)
 
         // Progress card
@@ -237,8 +278,8 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val pTitle = tv(context, "Your progress", 16f, Color.parseColor("#171717"), true)
-        pTitle.setPadding(0, 0, 0, 12)
+        val pTitle = tv(context, "Your progress", 16f, C_TEXT, true)
+        pTitle.setPadding(0, 0, 0, dp(context, 12))
         progressCard.addView(pTitle)
 
         val row1 = LinearLayout(context)
@@ -247,7 +288,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        row1.setPadding(0, 0, 0, 16)
+        row1.setPadding(0, 0, 0, dp(context, 16))
 
         row1.addView(statColumn(context, doneLessons.toString(), "lessons done"), wlp(context))
         row1.addView(statColumn(context, HskData.allWords().size.toString(), "words total"), wlp(context))
@@ -263,8 +304,8 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val cTitle = tv(context, "Continue learning", 16f, Color.parseColor("#171717"), true)
-        cTitle.setPadding(0, 0, 0, 12)
+        val cTitle = tv(context, "Continue learning", 16f, C_TEXT, true)
+        cTitle.setPadding(0, 0, 0, dp(context, 12))
         contCard.addView(cTitle)
 
         var nextLesson: HskLesson? = null
@@ -279,25 +320,18 @@ class MainActivity : Activity() {
             }
         }
 
-        val nextBtn = Button(context)
-        nextBtn.text = if (nextLesson != null) "${nextLesson.title}  ·  HSK $nextLevel" else "All lessons complete"
-        nextBtn.textSize = 16f
-        nextBtn.setTextColor(Color.parseColor("#FFFFFF"))
-        nextBtn.setBackgroundColor(Color.parseColor("#C62828"))
-        nextBtn.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        nextBtn.setPadding(12, 14, 12, 14)
-        nextBtn.setOnClickListener {
+        val nextBtn = primaryButton(
+            context,
+            if (nextLesson != null) "${nextLesson.title}  ·  HSK $nextLevel" else "All lessons complete"
+        ) {
             if (nextLesson != null) openLesson(nextLevel, HskData.modules().first { it.level == nextLevel }.lessons.indexOf(nextLesson))
         }
         contCard.addView(nextBtn)
         content.addView(contCard)
 
         // HSK course cards
-        content.addView(tv(context, "HSK courses", 16f, Color.parseColor("#171717"), true).apply {
-            setPadding(0, 24, 0, 12)
+        content.addView(tv(context, "HSK courses", 16f, C_TEXT, true).apply {
+            setPadding(0, dp(context, 24), 0, dp(context, 12))
         })
 
         for (mod in HskData.modules()) {
@@ -305,7 +339,7 @@ class MainActivity : Activity() {
         }
 
         content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 100)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
         })
 
         scroll.addView(content)
@@ -316,13 +350,12 @@ class MainActivity : Activity() {
     private fun statColumn(context: Context, value: String, label: String): LinearLayout {
         val col = LinearLayout(context)
         col.orientation = LinearLayout.VERTICAL
-        col.layoutParams = ViewGroup.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
         col.layoutParams = wlp(context)
         col.gravity = Gravity.CENTER
 
-        col.addView(tv(context, value, 20f, Color.parseColor("#C62828"), true))
-        val l = tv(context, label, 11f, Color.parseColor("#77736E"), true)
-        l.setPadding(4, 0, 0, 0)
+        col.addView(tv(context, value, 20f, C_ACCENT, true))
+        val l = tv(context, label, 11f, C_MUTED, true)
+        l.setPadding(dp(context, 4), 0, 0, 0)
         col.addView(l)
         return col
     }
@@ -333,7 +366,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        card.setPadding(16, 14, 16, 14)
+        card.setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 14))
 
         val header = LinearLayout(context)
         header.orientation = LinearLayout.HORIZONTAL
@@ -342,12 +375,13 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val badge = Button(context)
+        val badge = TextView(context)
         badge.text = mod.level.toString()
         badge.textSize = 14f
+        badge.setTypeface(badge.typeface, Typeface.BOLD)
         badge.setTextColor(Color.parseColor("#FFFFFF"))
-        badge.setBackgroundColor(Color.parseColor("#C62828"))
-        badge.layoutParams = ViewGroup.LayoutParams(32, 32)
+        badge.setBackgroundResource(R.drawable.btn_primary)
+        badge.layoutParams = ViewGroup.LayoutParams(dp(context, 32), dp(context, 32))
         badge.gravity = Gravity.CENTER
         header.addView(badge)
 
@@ -356,18 +390,18 @@ class MainActivity : Activity() {
         val ip = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
         ip.weight = 1f
         info.layoutParams = ip
-        info.setPadding(10, 0, 0, 0)
+        info.setPadding(dp(context, 10), 0, 0, 0)
 
-        info.addView(tv(context, mod.title, 17f, Color.parseColor("#171717"), true))
-        info.addView(tv(context, mod.subtitle, 13f, Color.parseColor("#77736E"), false))
+        info.addView(tv(context, mod.title, 17f, C_TEXT, true))
+        info.addView(tv(context, mod.subtitle, 13f, C_MUTED, false))
 
         header.addView(info)
         card.addView(header)
 
         val done = countDone(mod.level)
         val total = mod.lessons.size
-        card.addView(tv(context, "$done / $total lessons", 12f, Color.parseColor("#77736E"), false).apply {
-            setPadding(0, 6, 0, 0)
+        card.addView(tv(context, "$done / $total lessons", 12f, C_MUTED, false).apply {
+            setPadding(0, dp(context, 6), 0, 0)
         })
 
         card.addView(progressBar(context, if (total > 0) (done * 100 / total) else 0))
@@ -391,7 +425,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
+        root.setBackgroundColor(C_BG)
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -405,42 +439,35 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        content.setPadding(16, 16, 0, 80)
+        content.setPadding(dp(context, 16), dp(context, 16), 0, dp(context, 80))
 
+        // Back + title
         val top = LinearLayout(context)
         top.orientation = LinearLayout.HORIZONTAL
         top.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        top.setPadding(0, 0, 0, 16)
+        top.setPadding(0, 0, 0, dp(context, 16))
 
-        val btnBack = Button(context)
-        btnBack.text = "←"
-        btnBack.textSize = 20f
-        btnBack.setTextColor(Color.parseColor("#77736E"))
-        btnBack.setBackgroundColor(Color.parseColor("#FFFFFF"))
-        btnBack.layoutParams = ViewGroup.LayoutParams(44, 44)
-        btnBack.gravity = Gravity.CENTER
-        btnBack.setOnClickListener { switchTab(TAB_HOME) }
-        top.addView(btnBack)
+        top.addView(backButton(context) { switchTab(TAB_HOME) })
 
         val selectedLevel = prefs.getInt("selected_hsk", 1)
         val mod = HskData.modules().first { it.level == selectedLevel }
 
-        val title = tv(context, mod.title, 20f, Color.parseColor("#171717"), true)
+        val title = tv(context, mod.title, 20f, C_TEXT, true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        title.setPadding(10, 0, 0, 0)
+        title.setPadding(dp(context, 10), 0, 0, 0)
         title.gravity = Gravity.CENTER_VERTICAL
         top.addView(title)
 
         content.addView(top)
 
-        content.addView(tv(context, mod.subtitle, 13f, Color.parseColor("#77736E"), false).apply {
-            setPadding(0, 0, 0, 16)
+        content.addView(tv(context, mod.subtitle, 13f, C_MUTED, false).apply {
+            setPadding(0, 0, 0, dp(context, 16))
         })
 
         for ((index, lesson) in mod.lessons.withIndex()) {
@@ -448,7 +475,7 @@ class MainActivity : Activity() {
         }
 
         content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 100)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
         })
 
         scroll.addView(content)
@@ -464,7 +491,6 @@ class MainActivity : Activity() {
         )
 
         val done = prefs.getBoolean("done:${lesson.id}", false)
-        if (done) card.setBackgroundColor(Color.parseColor("#F1F7EE"))
 
         val header = LinearLayout(context)
         header.orientation = LinearLayout.HORIZONTAL
@@ -473,13 +499,13 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        header.addView(tv(context, "Lesson $num", 12f, Color.parseColor("#C62828"), true))
+        header.addView(tv(context, "Lesson $num", 12f, C_ACCENT, true))
 
         val state = tv(
             context,
             if (done) "Completed" else "Available",
             11f,
-            if (done) Color.parseColor("#36845B") else Color.parseColor("#77736E"),
+            if (done) C_SUCCESS else C_MUTED,
             true
         )
         state.gravity = Gravity.END
@@ -490,10 +516,10 @@ class MainActivity : Activity() {
         header.addView(state)
         card.addView(header)
 
-        card.addView(tv(context, lesson.title, 17f, Color.parseColor("#171717"), true).apply {
-            setPadding(0, 6, 0, 2)
+        card.addView(tv(context, lesson.title, 17f, C_TEXT, true).apply {
+            setPadding(0, dp(context, 6), 0, dp(context, 2))
         })
-        card.addView(tv(context, lesson.sub, 13f, Color.parseColor("#77736E"), false))
+        card.addView(tv(context, lesson.sub, 13f, C_MUTED, false))
 
         card.setOnClickListener { openLesson(mod.level, mod.lessons.indexOf(lesson)) }
 
@@ -518,7 +544,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
+        root.setBackgroundColor(C_BG)
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -532,117 +558,108 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        content.setPadding(16, 16, 16, 80)
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
 
+        // Top bar
         val top = LinearLayout(context)
         top.orientation = LinearLayout.HORIZONTAL
         top.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        top.setPadding(0, 0, 0, 16)
+        top.setPadding(0, 0, 0, dp(context, 16))
 
-        val btnBack = Button(context)
-        btnBack.text = "←"
-        btnBack.textSize = 20f
-        btnBack.setTextColor(Color.parseColor("#77736E"))
-        btnBack.setBackgroundColor(Color.parseColor("#FFFFFF"))
-        btnBack.layoutParams = ViewGroup.LayoutParams(44, 44)
-        btnBack.gravity = Gravity.CENTER
-        btnBack.setOnClickListener { switchTab(TAB_LEARN) }
-        top.addView(btnBack)
+        top.addView(backButton(context) { switchTab(TAB_LEARN) })
 
-        val title = tv(context, "${mod.title} · Lesson ${lessonIndex + 1}", 18f, Color.parseColor("#171717"), true)
+        val title = tv(context, "${mod.title} · Lesson ${lessonIndex + 1}", 18f, C_TEXT, true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        title.setPadding(10, 0, 0, 0)
+        title.setPadding(dp(context, 10), 0, 0, 0)
         title.gravity = Gravity.CENTER_VERTICAL
         top.addView(title)
 
         content.addView(top)
 
+        // Progress
         val totalWords = lesson.words.size
         val progressKey = "card_progress:${lesson.id}"
         var currentIdx = prefs.getInt(progressKey, 0)
         var revealed = false
 
-        content.addView(tv(context, "Progress", 11f, Color.parseColor("#77736E"), true).apply {
-            setPadding(0, 0, 0, 6)
+        content.addView(tv(context, "Progress", 11f, C_MUTED, true).apply {
+            setPadding(0, 0, 0, dp(context, 6))
         })
         content.addView(progressBar(context, if (totalWords > 0) ((currentIdx + 1) * 100 / totalWords).coerceAtMost(100) else 100))
 
+        // Flashcard
         val cardStage = LinearLayout(context)
         cardStage.orientation = LinearLayout.VERTICAL
         cardStage.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        cardStage.setPadding(0, 20, 0, 16)
+        cardStage.setPadding(dp(context, 24), dp(context, 24), dp(context, 24), dp(context, 24))
         cardStage.gravity = Gravity.CENTER
+        cardStage.setBackgroundResource(R.drawable.card_bg)
 
-        val hanzi = tv(context, lesson.words[currentIdx].hanzi, 64f, Color.parseColor("#171717"), true)
+        val hanzi = tv(context, lesson.words[currentIdx].hanzi, 64f, C_HANZI, true)
         hanzi.gravity = Gravity.CENTER
         cardStage.addView(hanzi)
 
-        val pinyin = tv(context, lesson.words[currentIdx].pinyin, 18f, Color.parseColor("#77736E"), false)
+        val pinyin = tv(context, lesson.words[currentIdx].pinyin, 18f, C_PINYIN, false)
         pinyin.gravity = Gravity.CENTER
-        pinyin.setPadding(0, 4, 0, 0)
+        pinyin.setPadding(0, dp(context, 4), 0, 0)
         cardStage.addView(pinyin)
 
-        val revealBtn = Button(context)
-        revealBtn.text = getStringRes(context, R.string.reveal, "Reveal meaning")
-        revealBtn.textSize = 14f
-        revealBtn.setTextColor(Color.parseColor("#FFFFFF"))
-        revealBtn.setBackgroundColor(Color.parseColor("#C62828"))
-        revealBtn.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        revealBtn.setPadding(14, 10, 14, 10)
+        val hint = tv(context, "Tap card to reveal meaning", 11f, C_MUTED, false)
+        hint.gravity = Gravity.CENTER
+        hint.setPadding(0, dp(context, 8), 0, dp(context, 10))
+        cardStage.addView(hint)
 
         val meaning = tv(
             context,
             lesson.words[currentIdx].meaning,
             16f,
-            Color.parseColor("#C62828"),
+            C_ACCENT,
             true
         )
         meaning.gravity = Gravity.CENTER
-        meaning.setPadding(0, 10, 0, 0)
+        meaning.setPadding(0, 0, 0, dp(context, 10))
         meaning.visibility = View.GONE
+        cardStage.addView(meaning)
 
-        revealBtn.setOnClickListener {
+        cardStage.setOnClickListener {
             revealed = !revealed
             meaning.visibility = if (revealed) View.VISIBLE else View.GONE
-            revealBtn.text = if (revealed) "Hide meaning" else "Reveal meaning"
+            hint.visibility = if (revealed) View.GONE else View.VISIBLE
         }
-        cardStage.addView(revealBtn)
-        cardStage.addView(meaning)
 
         content.addView(cardStage)
 
+        // Navigation
         val nav = LinearLayout(context)
         nav.orientation = LinearLayout.HORIZONTAL
         nav.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        nav.setPadding(0, 12, 0, 0)
+        nav.setPadding(0, dp(context, 12), 0, 0)
 
-        val btnPrev = Button(context)
-        btnPrev.text = getStringRes(context, R.string.previous, "Previous")
+        val btnPrev = TextView(context)
+        btnPrev.text = "Previous"
         btnPrev.textSize = 14f
-        btnPrev.setTextColor(Color.parseColor("#C62828"))
-        btnPrev.setBackgroundColor(Color.parseColor("#FFFFFF"))
+        btnPrev.setTextColor(C_ACCENT)
+        btnPrev.setBackgroundResource(R.drawable.btn_ghost)
         btnPrev.layoutParams = wlp(context)
-        btnPrev.setPadding(12, 12, 12, 12)
+        btnPrev.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        btnPrev.gravity = Gravity.CENTER
         btnPrev.isEnabled = currentIdx > 0
         btnPrev.setOnClickListener {
             revealed = false
             meaning.visibility = View.GONE
-            revealBtn.text = "Reveal meaning"
+            hint.visibility = View.VISIBLE
             currentIdx = (currentIdx - 1 + totalWords) % totalWords
             prefs.edit().putInt(progressKey, currentIdx).apply()
             hanzi.text = lesson.words[currentIdx].hanzi
@@ -652,17 +669,18 @@ class MainActivity : Activity() {
         nav.addView(btnPrev)
 
         val btnNext = Button(context)
-        btnNext.text = getStringRes(context, R.string.next, "Next")
+        btnNext.text = "Next"
         btnNext.textSize = 14f
         btnNext.setTextColor(Color.parseColor("#FFFFFF"))
-        btnNext.setBackgroundColor(Color.parseColor("#C62828"))
+        btnNext.setBackgroundResource(R.drawable.btn_primary)
         btnNext.layoutParams = wlp(context)
-        btnNext.setPadding(12, 12, 12, 12)
+        btnNext.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        btnNext.isAllCaps = false
         btnNext.isEnabled = currentIdx < totalWords - 1
         btnNext.setOnClickListener {
             revealed = false
             meaning.visibility = View.GONE
-            revealBtn.text = "Reveal meaning"
+            hint.visibility = View.VISIBLE
             currentIdx = (currentIdx + 1) % totalWords
             prefs.edit().putInt(progressKey, currentIdx).apply()
             hanzi.text = lesson.words[currentIdx].hanzi
@@ -674,19 +692,20 @@ class MainActivity : Activity() {
         content.addView(nav)
 
         val btnDone = Button(context)
-        btnDone.text = getStringRes(context, R.string.mark_done, "Mark lesson done")
+        btnDone.text = "Mark lesson done"
         btnDone.textSize = 14f
         btnDone.setTextColor(Color.parseColor("#FFFFFF"))
-        btnDone.setBackgroundColor(if (currentIdx >= totalWords - 1) Color.parseColor("#36845B") else Color.parseColor("#C62828"))
+        btnDone.setBackgroundResource(if (currentIdx >= totalWords - 1) R.drawable.btn_success else R.drawable.btn_primary)
         btnDone.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        btnDone.setPadding(12, 12, 12, 12)
+        btnDone.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        btnDone.isAllCaps = false
         btnDone.setOnClickListener {
             prefs.edit().putBoolean("done:${lesson.id}", true).apply()
             prefs.edit().putInt(progressKey, totalWords).apply()
-            Toast.makeText(context, getStringRes(context, R.string.lesson_complete, "Lesson complete"), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Lesson complete", Toast.LENGTH_SHORT).show()
             switchTab(TAB_LEARN)
         }
         content.addView(btnDone)
@@ -711,7 +730,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
+        root.setBackgroundColor(C_BG)
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -725,7 +744,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        content.setPadding(16, 16, 16, 80)
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
 
         val top = LinearLayout(context)
         top.orientation = LinearLayout.HORIZONTAL
@@ -733,24 +752,16 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        top.setPadding(0, 0, 0, 16)
+        top.setPadding(0, 0, 0, dp(context, 16))
 
-        val btnBack = Button(context)
-        btnBack.text = "←"
-        btnBack.textSize = 20f
-        btnBack.setTextColor(Color.parseColor("#77736E"))
-        btnBack.setBackgroundColor(Color.parseColor("#FFFFFF"))
-        btnBack.layoutParams = ViewGroup.LayoutParams(44, 44)
-        btnBack.gravity = Gravity.CENTER
-        btnBack.setOnClickListener { switchTab(TAB_HOME) }
-        top.addView(btnBack)
+        top.addView(backButton(context) { switchTab(TAB_HOME) })
 
-        val title = tv(context, "Vocabulary", 20f, Color.parseColor("#171717"), true)
+        val title = tv(context, "Vocabulary", 20f, C_TEXT, true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        title.setPadding(10, 0, 0, 0)
+        title.setPadding(dp(context, 10), 0, 0, 0)
         title.gravity = Gravity.CENTER_VERTICAL
         top.addView(title)
 
@@ -761,12 +772,12 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        search.setHint(getStringRes(context, R.string.search, "Search words"))
-        search.setHintTextColor(Color.parseColor("#77736E"))
-        search.setTextColor(Color.parseColor("#171717"))
+        search.setHint("Search words")
+        search.setHintTextColor(C_MUTED)
+        search.setTextColor(C_TEXT)
         search.textSize = 15f
-        search.setPadding(14, 12, 14, 12)
-        search.setBackgroundResource(android.R.drawable.editbox_background)
+        search.setPadding(dp(context, 14), dp(context, 12), dp(context, 14), dp(context, 12))
+        search.setBackgroundResource(R.drawable.input_bg)
         content.addView(search)
 
         val allWords = HskData.allWords()
@@ -788,8 +799,8 @@ class MainActivity : Activity() {
                 }
             }
             if (shown == 0) {
-                val empty = tv(context, getStringRes(context, R.string.no_results, "No words found"), 15f, Color.parseColor("#77736E"), false)
-                empty.setPadding(0, 20, 0, 0)
+                val empty = tv(context, "No words found", 15f, C_MUTED, false)
+                empty.setPadding(0, dp(context, 20), 0, 0)
                 empty.gravity = Gravity.CENTER
                 vocabContainer.addView(empty)
             }
@@ -806,7 +817,7 @@ class MainActivity : Activity() {
         content.addView(vocabContainer)
 
         content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 100)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
         })
 
         scroll.addView(content)
@@ -821,13 +832,13 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        row.setPadding(12, 10, 12, 10)
+        row.setPadding(dp(context, 12), dp(context, 10), dp(context, 12), dp(context, 10))
 
-        row.addView(tv(context, w.hanzi, 22f, Color.parseColor("#171717"), true))
-        row.addView(tv(context, w.pinyin, 15f, Color.parseColor("#77736E"), false))
-        row.addView(tv(context, w.meaning, 15f, Color.parseColor("#171717"), false))
-        row.addView(tv(context, "HSK ${w.hskLevel}", 10f, Color.parseColor("#C62828"), true).apply {
-            setPadding(0, 4, 0, 0)
+        row.addView(tv(context, w.hanzi, 22f, C_TEXT, true))
+        row.addView(tv(context, w.pinyin, 15f, C_PINYIN, false))
+        row.addView(tv(context, w.meaning, 15f, C_TEXT, false))
+        row.addView(tv(context, "HSK ${w.hskLevel}", 10f, C_ACCENT, true).apply {
+            setPadding(0, dp(context, 4), 0, 0)
         })
 
         row.setOnClickListener {
@@ -848,7 +859,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
+        root.setBackgroundColor(C_BG)
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -862,7 +873,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        content.setPadding(16, 16, 16, 80)
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
 
         val top = LinearLayout(context)
         top.orientation = LinearLayout.HORIZONTAL
@@ -870,38 +881,30 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        top.setPadding(0, 0, 0, 16)
+        top.setPadding(0, 0, 0, dp(context, 16))
 
-        val btnBack = Button(context)
-        btnBack.text = "←"
-        btnBack.textSize = 20f
-        btnBack.setTextColor(Color.parseColor("#77736E"))
-        btnBack.setBackgroundColor(Color.parseColor("#FFFFFF"))
-        btnBack.layoutParams = ViewGroup.LayoutParams(44, 44)
-        btnBack.gravity = Gravity.CENTER
-        btnBack.setOnClickListener { switchTab(TAB_HOME) }
-        top.addView(btnBack)
+        top.addView(backButton(context) { switchTab(TAB_HOME) })
 
-        val title = tv(context, "Review", 20f, Color.parseColor("#171717"), true)
+        val title = tv(context, "Review", 20f, C_TEXT, true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        title.setPadding(10, 0, 0, 0)
+        title.setPadding(dp(context, 10), 0, 0, 0)
         title.gravity = Gravity.CENTER_VERTICAL
         top.addView(title)
 
         content.addView(top)
 
-        content.addView(tv(context, "Words marked for review", 13f, Color.parseColor("#77736E"), false).apply {
-            setPadding(0, 0, 0, 16)
+        content.addView(tv(context, "Words marked for review", 13f, C_MUTED, false).apply {
+            setPadding(0, 0, 0, dp(context, 16))
         })
 
         val marked = prefs.getStringSet("review_words", emptySet()) ?: emptySet<String>()
 
         if (marked.isEmpty()) {
-            content.addView(tv(context, "No words marked for review yet.", 15f, Color.parseColor("#77736E"), false).apply {
-                setPadding(0, 40, 0, 0)
+            content.addView(tv(context, "No words marked for review yet.", 15f, C_MUTED, false).apply {
+                setPadding(0, dp(context, 40), 0, 0)
                 gravity = Gravity.CENTER
             })
         } else {
@@ -915,7 +918,7 @@ class MainActivity : Activity() {
         }
 
         content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 100)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
         })
 
         scroll.addView(content)
@@ -930,11 +933,11 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        row.setPadding(12, 10, 12, 10)
+        row.setPadding(dp(context, 12), dp(context, 10), dp(context, 12), dp(context, 10))
 
-        row.addView(tv(context, w.hanzi, 22f, Color.parseColor("#171717"), true))
-        row.addView(tv(context, w.pinyin, 15f, Color.parseColor("#77736E"), false))
-        row.addView(tv(context, w.meaning, 15f, Color.parseColor("#171717"), false))
+        row.addView(tv(context, w.hanzi, 22f, C_TEXT, true))
+        row.addView(tv(context, w.pinyin, 15f, C_PINYIN, false))
+        row.addView(tv(context, w.meaning, 15f, C_TEXT, false))
 
         row.setOnClickListener {
             Toast.makeText(context, w.meaning, Toast.LENGTH_SHORT).show()
@@ -954,7 +957,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(Color.parseColor("#F8F6F2"))
+        root.setBackgroundColor(C_BG)
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -968,14 +971,15 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        content.setPadding(16, 16, 16, 80)
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
 
-        val avatar = Button(context)
+        val avatar = TextView(context)
         avatar.text = "文"
         avatar.textSize = 32f
+        avatar.setTypeface(avatar.typeface, Typeface.BOLD)
         avatar.setTextColor(Color.parseColor("#0A0A0A"))
-        avatar.setBackgroundColor(Color.parseColor("#C62828"))
-        avatar.layoutParams = ViewGroup.LayoutParams(64, 64)
+        avatar.setBackgroundResource(R.drawable.btn_primary)
+        avatar.layoutParams = ViewGroup.LayoutParams(dp(context, 64), dp(context, 64))
         avatar.gravity = Gravity.CENTER
 
         val avatarWrap = LinearLayout(context)
@@ -987,17 +991,17 @@ class MainActivity : Activity() {
         avatarWrap.addView(avatar)
         content.addView(avatarWrap)
 
-        content.addView(tv(context, "Learner", 20f, Color.parseColor("#171717"), true).apply {
-            setPadding(0, 8, 0, 2)
+        content.addView(tv(context, "Learner", 20f, C_TEXT, true).apply {
+            setPadding(0, dp(context, 8), 0, dp(context, 2))
             gravity = Gravity.CENTER
         })
 
-        content.addView(tv(context, "HSK 2 · 300 words", 13f, Color.parseColor("#77736E"), false).apply {
+        content.addView(tv(context, "HSK 2 · 300 words", 13f, C_MUTED, false).apply {
             gravity = Gravity.CENTER
         })
 
         content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 24)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 24))
         })
 
         val statsCard = card(context)
@@ -1006,8 +1010,8 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val sTitle = tv(context, "Your stats", 16f, Color.parseColor("#171717"), true)
-        sTitle.setPadding(0, 0, 0, 12)
+        val sTitle = tv(context, "Your stats", 16f, C_TEXT, true)
+        sTitle.setPadding(0, 0, 0, dp(context, 12))
         statsCard.addView(sTitle)
 
         val totalLessons = HskData.modules().sumOf { it.lessons.size }
@@ -1033,7 +1037,7 @@ class MainActivity : Activity() {
         content.addView(statsCard)
 
         content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 100)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
         })
 
         scroll.addView(content)
@@ -1044,22 +1048,21 @@ class MainActivity : Activity() {
     private fun statBox(context: Context, value: String, label: String): LinearLayout {
         val col = LinearLayout(context)
         col.orientation = LinearLayout.VERTICAL
-        col.layoutParams = ViewGroup.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
         col.layoutParams = wlp(context)
         col.gravity = Gravity.CENTER
 
-        col.addView(tv(context, value, 20f, Color.parseColor("#C62828"), true))
+        col.addView(tv(context, value, 20f, C_ACCENT, true))
 
-        val l = tv(context, label, 11f, Color.parseColor("#77736E"), true)
-        l.setPadding(4, 0, 0, 0)
+        val l = tv(context, label, 11f, C_MUTED, true)
+        l.setPadding(dp(context, 4), 0, 0, 0)
         col.addView(l)
         return col
     }
 
     private fun dividerLine(context: Context): View {
         val v = View(context)
-        v.layoutParams = ViewGroup.LayoutParams(1, 40)
-        v.setBackgroundColor(Color.parseColor("#E9E5DF"))
+        v.layoutParams = ViewGroup.LayoutParams(1, dp(context, 40))
+        v.setBackgroundColor(C_BORDER)
         return v
     }
 }
