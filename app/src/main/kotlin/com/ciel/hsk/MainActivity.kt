@@ -543,9 +543,15 @@ class MainActivity : Activity() {
 
         card.addView(progressBar(context, if (total > 0) (done * 100 / total) else 0))
 
-        card.setOnClickListener {
-            prefs.edit().putInt("selected_hsk", mod.level).apply()
-            switchTab(TAB_LEARN)
+        if (mod.level > 3) {
+            card.addView(tv(context, "Coming soon", 12f, C_MUTED(), false).apply {
+                setPadding(0, dp(context, 6), 0, 0)
+            })
+        } else {
+            card.setOnClickListener {
+                prefs.edit().putInt("selected_hsk", mod.level).apply()
+                switchTab(TAB_LEARN)
+            }
         }
 
         return card
@@ -607,8 +613,15 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, dp(context, 16))
         })
 
-        for ((index, lesson) in mod.lessons.withIndex()) {
-            content.addView(lessonCard(context, mod, index + 1, lesson))
+        if (selectedLevel > 3) {
+            content.addView(tv(context, "Coming soon", 20f, C_ACCENT(), true).apply {
+                setPadding(0, dp(context, 40), 0, 0)
+                gravity = Gravity.CENTER
+            })
+        } else {
+            for ((index, lesson) in mod.lessons.withIndex()) {
+                content.addView(lessonCard(context, mod, index + 1, lesson))
+            }
         }
 
         content.addView(View(context).apply {
