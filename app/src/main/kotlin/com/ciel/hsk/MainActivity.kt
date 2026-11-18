@@ -35,7 +35,8 @@ class MainActivity : Activity() {
     private val TAB_PRACTICE = 3
     private val TAB_PROFILE = 4
 
-    val tabLabels = arrayOf("Home", "Learn", "Vocab", "Practice", "Profile")
+    private val tabLabels = arrayOf("Home", "Learn", "Vocab", "Practice", "Profile")
+    private val tabIcons = arrayOf("⌂", "学", "词", "练", "◉")
 
     // Design tokens — dynamic light/dark
     private fun C_BG(): Int = if (isDarkMode()) Color.parseColor("#1A1A1A") else Color.parseColor("#F8F6F2")
@@ -65,10 +66,10 @@ class MainActivity : Activity() {
         root.setBackgroundColor(C_BG())
 
         container = FrameLayout(this)
-        container.layoutParams = ViewGroup.LayoutParams(
+        container.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
+            0
+        ).apply { weight = 1f }
         root.addView(container)
 
         navBar = buildNavBar()
@@ -117,10 +118,11 @@ class MainActivity : Activity() {
         bar.orientation = LinearLayout.HORIZONTAL
         bar.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dp(this, 56)
+            dp(this, 64)
         )
         bar.setBackgroundColor(C_CARD())
-        bar.setPadding(dp(this, 8), dp(this, 8), dp(this, 8), dp(this, 8))
+        bar.setPadding(dp(this, 8), dp(this, 4), dp(this, 8), dp(this, 4))
+        bar.elevation = dp(this, 8).toFloat()
 
         for (i in tabLabels.indices) {
             val item = LinearLayout(this)
@@ -131,9 +133,10 @@ class MainActivity : Activity() {
             item.gravity = Gravity.CENTER
             item.setPadding(dp(this, 4), dp(this, 4), dp(this, 4), dp(this, 4))
             item.tag = i
+            item.contentDescription = "tab_${tabLabels[i].lowercase()}"
 
             val icon = TextView(this)
-            icon.text = tabLabels[i].first().toString().uppercase()
+            icon.text = tabIcons[i]
             icon.textSize = 18f
             icon.setTypeface(icon.typeface, Typeface.BOLD)
             icon.setTextColor(C_MUTED())
