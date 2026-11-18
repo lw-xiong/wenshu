@@ -53,6 +53,12 @@ print('classes.dex added')
 "
 
 echo "=== Step 7: sign ==="
+if [[ ! -f build/hsk.keystore ]]; then
+    keytool -genkeypair -keystore build/hsk.keystore -alias hsk \
+        -keyalg RSA -keysize 2048 -validity 10000 \
+        -storepass android -keypass android \
+        -dname "CN=WenShu Development, OU=Development, O=WenShu, C=US"
+fi
 "$ANDROID_SDK/build-tools/34.0.0/apksigner" sign \
     --ks build/hsk.keystore \
     --ks-key-alias hsk \
@@ -63,7 +69,7 @@ echo "=== Step 7: sign ==="
 
 echo "=== Step 8: verify ==="
 "$ANDROID_SDK/build-tools/34.0.0/apksigner" verify --verbose build/hsk-app.apk
-"$ANDROID_SDK/build-tools/34.0.0/aapt2" dump badging build/hsk-app.apk | head -14
+"$ANDROID_SDK/build-tools/34.0.0/aapt2" dump badging build/hsk-app.apk | sed -n '1,14p'
 
 echo ""
 echo "=== BUILD COMPLETE ==="

@@ -18,7 +18,8 @@ Tap-to-reveal flashcards, TTS pronunciation, progress tracking, and offline supp
 - **TTS pronunciation** — Android TextToSpeech for Chinese audio
 - **Progress tracking** — lessons done, words learned, persists across restarts
 - **Vocabulary library** — searchable word list with HSK level tags
-- **Review queue** — mark words for later review
+- **Practice mode** — multiple-choice quizzes, mistake review, XP, and results
+- **Dark mode** — persistent light/dark toggle with dynamic surfaces and text
 - **Offline-first** — no network dependency, all data bundled in APK
 - **AntiSlopUI design** — cinnabar red accent, deep ink + rice paper neutrals, no purple, no gradient blobs
 

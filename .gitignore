@@ -1,7 +1,6 @@
 # Build artifacts (regenerable) — keep only deliverables
 build/*
 !build/hsk-app.apk
-!build/hsk.keystore
 !build/kotlin-stdlib-2.4.21.jar
 !build/kotlin-stdlib-common-2.4.21.jar
 

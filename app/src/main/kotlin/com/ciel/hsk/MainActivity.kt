@@ -32,25 +32,25 @@ class MainActivity : Activity() {
     private val TAB_HOME = 0
     private val TAB_LEARN = 1
     private val TAB_VOCAB = 2
-    private val TAB_REVIEW = 3
+    private val TAB_PRACTICE = 3
     private val TAB_PROFILE = 4
 
-    private val tabLabels = listOf("Home", "Learn", "Vocabulary", "Review", "Profile")
+    val tabLabels = arrayOf("Home", "Learn", "Vocab", "Practice", "Profile")
 
-    // Design tokens
-    private val C_BG = Color.parseColor("#F8F6F2")
-    private val C_CARD = Color.parseColor("#FFFFFF")
-    private val C_TEXT = Color.parseColor("#171717")
-    private val C_MUTED = Color.parseColor("#77736E")
-    private val C_ACCENT = Color.parseColor("#C62828")
-    private val C_GOLD = Color.parseColor("#D6A84F")
-    private val C_SUCCESS = Color.parseColor("#36845B")
-    private val C_BORDER = Color.parseColor("#E9E5DF")
-    private val C_HANZI = Color.parseColor("#171717")
-    private val C_PINYIN = Color.parseColor("#77736E")
-    private val C_LOCKED = Color.parseColor("#C9C4BD")
-    private val C_DONE_BG = Color.parseColor("#F1F7EE")
-    private val C_DONE_TEXT = Color.parseColor("#36845B")
+    // Design tokens — dynamic light/dark
+    private fun C_BG(): Int = if (isDarkMode()) Color.parseColor("#1A1A1A") else Color.parseColor("#F8F6F2")
+    private fun C_CARD(): Int = if (isDarkMode()) Color.parseColor("#2D2D2D") else Color.parseColor("#FFFFFF")
+    private fun C_TEXT(): Int = if (isDarkMode()) Color.parseColor("#FFFFFF") else Color.parseColor("#171717")
+    private fun C_MUTED(): Int = if (isDarkMode()) Color.parseColor("#A0A0A0") else Color.parseColor("#77736E")
+    private fun C_ACCENT(): Int = if (isDarkMode()) Color.parseColor("#FF6B6B") else Color.parseColor("#C62828")
+    private fun C_GOLD(): Int = if (isDarkMode()) Color.parseColor("#E8B94F") else Color.parseColor("#D6A84F")
+    private fun C_SUCCESS(): Int = if (isDarkMode()) Color.parseColor("#5EC77E") else Color.parseColor("#36845B")
+    private fun C_BORDER(): Int = if (isDarkMode()) Color.parseColor("#404040") else Color.parseColor("#E9E5DF")
+    private fun C_HANZI(): Int = if (isDarkMode()) Color.parseColor("#FFFFFF") else Color.parseColor("#171717")
+    private fun C_PINYIN(): Int = if (isDarkMode()) Color.parseColor("#A0A0A0") else Color.parseColor("#77736E")
+    private fun C_LOCKED(): Int = if (isDarkMode()) Color.parseColor("#505050") else Color.parseColor("#C9C4BD")
+    private fun C_DONE_BG(): Int = if (isDarkMode()) Color.parseColor("#1E3D28") else Color.parseColor("#F1F7EE")
+    private fun C_DONE_TEXT(): Int = if (isDarkMode()) Color.parseColor("#5EC77E") else Color.parseColor("#36845B")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +62,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
 
         container = FrameLayout(this)
         container.layoutParams = ViewGroup.LayoutParams(
@@ -100,6 +100,16 @@ class MainActivity : Activity() {
         return (d * context.resources.displayMetrics.density).toInt()
     }
 
+    private fun isDarkMode(): Boolean {
+        return prefs.getBoolean("dark_mode", false)
+    }
+
+    private fun setDarkMode(dark: Boolean) {
+        prefs.edit().putBoolean("dark_mode", dark).apply()
+        // Recreate activity to apply theme
+        recreate()
+    }
+
     /* ---------- Bottom navigation ---------- */
 
     private fun buildNavBar(): LinearLayout {
@@ -109,7 +119,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             dp(this, 56)
         )
-        bar.setBackgroundColor(C_CARD)
+        bar.setBackgroundColor(C_CARD())
         bar.setPadding(dp(this, 8), dp(this, 8), dp(this, 8), dp(this, 8))
 
         for (i in tabLabels.indices) {
@@ -126,13 +136,13 @@ class MainActivity : Activity() {
             icon.text = tabLabels[i].first().toString().uppercase()
             icon.textSize = 18f
             icon.setTypeface(icon.typeface, Typeface.BOLD)
-            icon.setTextColor(C_MUTED)
+            icon.setTextColor(C_MUTED())
 
             val label = TextView(this)
             label.text = tabLabels[i]
             label.textSize = 11f
             label.setTypeface(label.typeface, Typeface.BOLD)
-            label.setTextColor(C_MUTED)
+            label.setTextColor(C_MUTED())
 
             item.addView(icon)
             item.addView(label)
@@ -150,7 +160,7 @@ class MainActivity : Activity() {
             val icon = item.getChildAt(0) as TextView
             val label = item.getChildAt(1) as TextView
             val active = i == currentTab
-            val c = if (active) C_ACCENT else C_MUTED
+            val c = if (active) C_ACCENT() else C_MUTED()
             icon.setTextColor(c)
             label.setTextColor(c)
         }
@@ -167,7 +177,7 @@ class MainActivity : Activity() {
             TAB_HOME -> container.addView(buildHomeScreen(this))
             TAB_LEARN -> container.addView(buildLearnScreen(this))
             TAB_VOCAB -> container.addView(buildVocabScreen(this))
-            TAB_REVIEW -> container.addView(buildReviewScreen(this))
+            TAB_PRACTICE -> container.addView(buildPracticeHub(this))
             TAB_PROFILE -> container.addView(buildProfileScreen(this))
         }
     }
@@ -183,10 +193,18 @@ class MainActivity : Activity() {
         return v
     }
 
+    private fun roundedBg(context: Context, fill: Int, stroke: Int, radius: Int = 16): android.graphics.drawable.GradientDrawable {
+        return android.graphics.drawable.GradientDrawable().apply {
+            setColor(fill)
+            cornerRadius = dp(context, radius).toFloat()
+            setStroke(dp(context, 1), stroke)
+        }
+    }
+
     private fun card(context: Context): LinearLayout {
         val c = LinearLayout(context)
         c.orientation = LinearLayout.VERTICAL
-        c.setBackgroundResource(R.drawable.card_bg)
+        c.background = roundedBg(context, C_CARD(), C_BORDER())
         c.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16))
         return c
     }
@@ -214,8 +232,8 @@ class MainActivity : Activity() {
         )
         pb.max = 100
         pb.progress = pct.coerceIn(0, 100)
-        pb.setProgressTintList(ColorStateList.valueOf(C_ACCENT))
-        pb.setProgressBackgroundTintList(ColorStateList.valueOf(C_BORDER))
+        pb.setProgressTintList(ColorStateList.valueOf(C_ACCENT()))
+        pb.setProgressBackgroundTintList(ColorStateList.valueOf(C_BORDER()))
         return pb
     }
 
@@ -223,7 +241,7 @@ class MainActivity : Activity() {
         val b = TextView(context)
         b.text = "←"
         b.textSize = 24f
-        b.setTextColor(C_MUTED)
+        b.setTextColor(C_MUTED())
         b.gravity = Gravity.CENTER
         b.layoutParams = ViewGroup.LayoutParams(dp(context, 44), dp(context, 44))
         b.setOnClickListener { onClick() }
@@ -235,7 +253,7 @@ class MainActivity : Activity() {
         b.text = text
         b.textSize = 15f
         b.setTextColor(Color.parseColor("#FFFFFF"))
-        b.setBackgroundResource(R.drawable.btn_primary)
+        b.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         b.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -262,7 +280,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
         root.setPadding(dp(context, 16), 0, dp(context, 16), 0)
 
         val scroll = ScrollView(context)
@@ -280,9 +298,9 @@ class MainActivity : Activity() {
         content.setPadding(0, dp(context, 20), 0, dp(context, 80))
 
         // Greeting
-        content.addView(tv(context, "Welcome back.", 24f, C_TEXT, true))
+        content.addView(tv(context, "Welcome back.", 24f, C_TEXT(), true))
 
-        val sub = tv(context, "Keep building your Mandarin.", 14f, C_MUTED, false)
+        val sub = tv(context, "Keep building your Mandarin.", 14f, C_MUTED(), false)
         sub.setPadding(0, dp(context, 6), 0, dp(context, 20))
         content.addView(sub)
 
@@ -301,7 +319,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val pTitle = tv(context, "Your progress", 16f, C_TEXT, true)
+        val pTitle = tv(context, "Your progress", 16f, C_TEXT(), true)
         pTitle.setPadding(0, 0, 0, dp(context, 12))
         progressCard.addView(pTitle)
 
@@ -315,6 +333,7 @@ class MainActivity : Activity() {
 
         row1.addView(statColumn(context, doneLessons.toString(), "lessons done"), wlp(context))
         row1.addView(statColumn(context, HskData.allWords().size.toString(), "words total"), wlp(context))
+        row1.addView(statColumn(context, prefs.getInt("xp_total", 0).toString(), "XP earned"), wlp(context))
         progressCard.addView(row1)
 
         progressCard.addView(progressBar(context, if (totalLessons > 0) (doneLessons * 100 / totalLessons) else 0))
@@ -327,7 +346,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val cTitle = tv(context, "Continue learning", 16f, C_TEXT, true)
+        val cTitle = tv(context, "Continue learning", 16f, C_TEXT(), true)
         cTitle.setPadding(0, 0, 0, dp(context, 12))
         contCard.addView(cTitle)
 
@@ -353,7 +372,7 @@ class MainActivity : Activity() {
         content.addView(contCard)
 
         // HSK course cards
-        content.addView(tv(context, "HSK courses", 16f, C_TEXT, true).apply {
+        content.addView(tv(context, "HSK courses", 16f, C_TEXT(), true).apply {
             setPadding(0, dp(context, 24), 0, dp(context, 12))
         })
 
@@ -376,8 +395,8 @@ class MainActivity : Activity() {
         col.layoutParams = wlp(context)
         col.gravity = Gravity.CENTER
 
-        col.addView(tv(context, value, 20f, C_ACCENT, true))
-        val l = tv(context, label, 11f, C_MUTED, true)
+        col.addView(tv(context, value, 20f, C_ACCENT(), true))
+        val l = tv(context, label, 11f, C_MUTED(), true)
         l.setPadding(dp(context, 4), 0, 0, 0)
         col.addView(l)
         return col
@@ -403,7 +422,7 @@ class MainActivity : Activity() {
         badge.textSize = 14f
         badge.setTypeface(badge.typeface, Typeface.BOLD)
         badge.setTextColor(Color.parseColor("#FFFFFF"))
-        badge.setBackgroundResource(R.drawable.btn_primary)
+        badge.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         badge.layoutParams = ViewGroup.LayoutParams(dp(context, 32), dp(context, 32))
         badge.gravity = Gravity.CENTER
         header.addView(badge)
@@ -415,22 +434,22 @@ class MainActivity : Activity() {
         info.layoutParams = ip
         info.setPadding(dp(context, 10), 0, 0, 0)
 
-        info.addView(tv(context, mod.title, 17f, C_TEXT, true))
-        info.addView(tv(context, mod.subtitle, 13f, C_MUTED, false))
+        info.addView(tv(context, mod.title, 17f, C_TEXT(), true))
+        info.addView(tv(context, mod.subtitle, 13f, C_MUTED(), false))
 
         header.addView(info)
         card.addView(header)
 
         val done = countDone(mod.level)
         val total = mod.lessons.size
-        card.addView(tv(context, "$done / $total lessons", 12f, C_MUTED, false).apply {
+        card.addView(tv(context, "$done / $total lessons", 12f, C_MUTED(), false).apply {
             setPadding(0, dp(context, 6), 0, 0)
         })
 
         card.addView(progressBar(context, if (total > 0) (done * 100 / total) else 0))
 
         if (mod.level > 2) {
-            card.addView(tv(context, "Coming soon", 12f, C_MUTED, false).apply {
+            card.addView(tv(context, "Coming soon", 12f, C_MUTED(), false).apply {
                 setPadding(0, dp(context, 6), 0, 0)
             })
         } else {
@@ -454,7 +473,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -484,7 +503,7 @@ class MainActivity : Activity() {
         val selectedLevel = prefs.getInt("selected_hsk", 1)
         val mod = HskData.modules().first { it.level == selectedLevel }
 
-        val title = tv(context, mod.title, 20f, C_TEXT, true)
+        val title = tv(context, mod.title, 20f, C_TEXT(), true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -495,12 +514,12 @@ class MainActivity : Activity() {
 
         content.addView(top)
 
-        content.addView(tv(context, mod.subtitle, 13f, C_MUTED, false).apply {
+        content.addView(tv(context, mod.subtitle, 13f, C_MUTED(), false).apply {
             setPadding(0, 0, 0, dp(context, 16))
         })
 
         if (selectedLevel > 2) {
-            content.addView(tv(context, "Coming soon", 20f, C_ACCENT, true).apply {
+            content.addView(tv(context, "Coming soon", 20f, C_ACCENT(), true).apply {
                 setPadding(0, dp(context, 40), 0, 0)
                 gravity = Gravity.CENTER
             })
@@ -535,13 +554,13 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        header.addView(tv(context, "Lesson $num", 12f, C_ACCENT, true))
+        header.addView(tv(context, "Lesson $num", 12f, C_ACCENT(), true))
 
         val state = tv(
             context,
             if (done) "Completed" else "Available",
             11f,
-            if (done) C_SUCCESS else C_MUTED,
+            if (done) C_SUCCESS() else C_MUTED(),
             true
         )
         state.gravity = Gravity.END
@@ -552,10 +571,10 @@ class MainActivity : Activity() {
         header.addView(state)
         card.addView(header)
 
-        card.addView(tv(context, lesson.title, 17f, C_TEXT, true).apply {
+        card.addView(tv(context, lesson.title, 17f, C_TEXT(), true).apply {
             setPadding(0, dp(context, 6), 0, dp(context, 2))
         })
-        card.addView(tv(context, lesson.sub, 13f, C_MUTED, false))
+        card.addView(tv(context, lesson.sub, 13f, C_MUTED(), false))
 
         card.setOnClickListener { openLesson(mod.level, mod.lessons.indexOf(lesson)) }
 
@@ -581,7 +600,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -608,7 +627,7 @@ class MainActivity : Activity() {
 
         top.addView(backButton(context) { switchTab(TAB_LEARN) })
 
-        val title = tv(context, "${mod.title} · Lesson ${lessonIndex + 1}", 18f, C_TEXT, true)
+        val title = tv(context, "${mod.title} · Lesson ${lessonIndex + 1}", 18f, C_TEXT(), true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -625,7 +644,7 @@ class MainActivity : Activity() {
         var currentIdx = prefs.getInt(progressKey, 0).coerceIn(0, totalWords - 1)
         var revealed = false
 
-        content.addView(tv(context, "Progress", 11f, C_MUTED, true).apply {
+        content.addView(tv(context, "Progress", 11f, C_MUTED(), true).apply {
             setPadding(0, 0, 0, dp(context, 6))
         })
         content.addView(progressBar(context, if (totalWords > 0) ((currentIdx + 1) * 100 / totalWords).coerceAtMost(100) else 100))
@@ -639,9 +658,9 @@ class MainActivity : Activity() {
         )
         cardStage.setPadding(dp(context, 24), dp(context, 24), dp(context, 24), dp(context, 24))
         cardStage.gravity = Gravity.CENTER
-        cardStage.setBackgroundResource(R.drawable.card_bg)
+        cardStage.background = roundedBg(context, C_CARD(), C_BORDER())
 
-        val hanzi = tv(context, lesson.words[currentIdx].hanzi, 64f, C_HANZI, true)
+        val hanzi = tv(context, lesson.words[currentIdx].hanzi, 64f, C_HANZI(), true)
         hanzi.gravity = Gravity.CENTER
         cardStage.addView(hanzi)
 
@@ -649,7 +668,7 @@ class MainActivity : Activity() {
         val audioBtn = TextView(context)
         audioBtn.text = "🔊 Play"
         audioBtn.textSize = 14f
-        audioBtn.setTextColor(C_ACCENT)
+        audioBtn.setTextColor(C_ACCENT())
         audioBtn.gravity = Gravity.CENTER
         audioBtn.setPadding(dp(context, 8), dp(context, 6), dp(context, 8), dp(context, 6))
         audioBtn.setOnClickListener {
@@ -661,12 +680,12 @@ class MainActivity : Activity() {
         }
         cardStage.addView(audioBtn)
 
-        val pinyin = tv(context, lesson.words[currentIdx].pinyin, 18f, C_PINYIN, false)
+        val pinyin = tv(context, lesson.words[currentIdx].pinyin, 18f, C_PINYIN(), false)
         pinyin.gravity = Gravity.CENTER
         pinyin.setPadding(0, dp(context, 4), 0, 0)
         cardStage.addView(pinyin)
 
-        val hint = tv(context, "Tap card to reveal meaning", 11f, C_MUTED, false)
+        val hint = tv(context, "Tap card to reveal meaning", 11f, C_MUTED(), false)
         hint.gravity = Gravity.CENTER
         hint.setPadding(0, dp(context, 8), 0, dp(context, 10))
         cardStage.addView(hint)
@@ -675,7 +694,7 @@ class MainActivity : Activity() {
             context,
             lesson.words[currentIdx].meaning,
             16f,
-            C_ACCENT,
+            C_ACCENT(),
             true
         )
         meaning.gravity = Gravity.CENTER
@@ -726,7 +745,7 @@ class MainActivity : Activity() {
         btnNext.text = if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
         btnNext.textSize = 15f
         btnNext.setTextColor(Color.parseColor("#FFFFFF"))
-        btnNext.setBackgroundResource(R.drawable.btn_primary)
+        btnNext.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         btnNext.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -736,8 +755,8 @@ class MainActivity : Activity() {
 
         btnPrev.text = "Previous"
         btnPrev.textSize = 14f
-        btnPrev.setTextColor(C_ACCENT)
-        btnPrev.setBackgroundResource(R.drawable.btn_ghost)
+        btnPrev.setTextColor(C_ACCENT())
+        btnPrev.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
         btnPrev.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -748,9 +767,16 @@ class MainActivity : Activity() {
 
         // Shared navigation logic
         fun goTo(index: Int) {
+            hanzi.animate().cancel()
+            meaning.animate().cancel()
             revealed = false
-            meaning.visibility = View.GONE
+            hanzi.rotationY = 0f
+            pinyin.rotationY = 0f
+            meaning.rotationY = 0f
+            hanzi.visibility = View.VISIBLE
+            pinyin.visibility = View.VISIBLE
             hint.visibility = View.VISIBLE
+            meaning.visibility = View.GONE
             currentIdx = index
             prefs.edit().putInt(progressKey, currentIdx).apply()
             hanzi.text = lesson.words[currentIdx].hanzi
@@ -793,8 +819,8 @@ class MainActivity : Activity() {
         val btnShuffle = TextView(context)
         btnShuffle.text = "Shuffle"
         btnShuffle.textSize = 14f
-        btnShuffle.setTextColor(C_ACCENT)
-        btnShuffle.setBackgroundResource(R.drawable.btn_ghost)
+        btnShuffle.setTextColor(C_ACCENT())
+        btnShuffle.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
         btnShuffle.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -830,7 +856,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -856,7 +882,7 @@ class MainActivity : Activity() {
 
         top.addView(backButton(context) { switchTab(TAB_HOME) })
 
-        val title = tv(context, "Vocabulary", 20f, C_TEXT, true)
+        val title = tv(context, "Vocabulary", 20f, C_TEXT(), true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -873,11 +899,11 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
         search.setHint("Search words")
-        search.setHintTextColor(C_MUTED)
-        search.setTextColor(C_TEXT)
+        search.setHintTextColor(C_MUTED())
+        search.setTextColor(C_TEXT())
         search.textSize = 15f
         search.setPadding(dp(context, 14), dp(context, 12), dp(context, 14), dp(context, 12))
-        search.setBackgroundResource(R.drawable.input_bg)
+        search.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
         content.addView(search)
 
         val allWords = HskData.allWords()
@@ -899,7 +925,7 @@ class MainActivity : Activity() {
                 }
             }
             if (shown == 0) {
-                val empty = tv(context, "No words found", 15f, C_MUTED, false)
+                val empty = tv(context, "No words found", 15f, C_MUTED(), false)
                 empty.setPadding(0, dp(context, 20), 0, 0)
                 empty.gravity = Gravity.CENTER
                 vocabContainer.addView(empty)
@@ -934,10 +960,10 @@ class MainActivity : Activity() {
         )
         row.setPadding(dp(context, 12), dp(context, 10), dp(context, 12), dp(context, 10))
 
-        row.addView(tv(context, w.hanzi, 22f, C_TEXT, true))
-        row.addView(tv(context, w.pinyin, 15f, C_PINYIN, false))
-        row.addView(tv(context, w.meaning, 15f, C_TEXT, false))
-        row.addView(tv(context, "HSK ${w.hskLevel}", 10f, C_ACCENT, true).apply {
+        row.addView(tv(context, w.hanzi, 22f, C_TEXT(), true))
+        row.addView(tv(context, w.pinyin, 15f, C_PINYIN(), false))
+        row.addView(tv(context, w.meaning, 15f, C_TEXT(), false))
+        row.addView(tv(context, "HSK ${w.hskLevel}", 10f, C_ACCENT(), true).apply {
             setPadding(0, dp(context, 4), 0, 0)
         })
 
@@ -952,14 +978,14 @@ class MainActivity : Activity() {
        REVIEW SCREEN — marked words
        ======================================================================== */
 
-    private fun buildReviewScreen(context: Context): View {
+    private fun buildPracticeHub(context: Context): View {
         val root = LinearLayout(context)
         root.orientation = LinearLayout.VERTICAL
         root.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -985,7 +1011,7 @@ class MainActivity : Activity() {
 
         top.addView(backButton(context) { switchTab(TAB_HOME) })
 
-        val title = tv(context, "Review", 20f, C_TEXT, true)
+        val title = tv(context, "Practice", 20f, C_TEXT(), true)
         title.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -996,25 +1022,52 @@ class MainActivity : Activity() {
 
         content.addView(top)
 
-        content.addView(tv(context, "Words marked for review", 13f, C_MUTED, false).apply {
+        content.addView(tv(context, "Targeted practice · ${prefs.getInt("xp_total", 0)} XP earned", 13f, C_MUTED(), false).apply {
             setPadding(0, 0, 0, dp(context, 16))
         })
 
-        val marked = prefs.getStringSet("review_words", emptySet()) ?: emptySet<String>()
+        // Practice options
+        val practiceOptions = listOf(
+            "Review mistakes" to "Words you got wrong",
+            "Practice words" to "Spaced repetition review",
+            "Quick practice" to "Random vocabulary drill"
+        )
 
-        if (marked.isEmpty()) {
-            content.addView(tv(context, "No words marked for review yet.", 15f, C_MUTED, false).apply {
-                setPadding(0, dp(context, 40), 0, 0)
-                gravity = Gravity.CENTER
+        for ((title, sub) in practiceOptions) {
+            val optionCard = card(context)
+            optionCard.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            optionCard.setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 14))
+
+            val header = LinearLayout(context)
+            header.orientation = LinearLayout.HORIZONTAL
+            header.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+
+            header.addView(tv(context, title, 16f, C_TEXT(), true))
+
+            val arrow = tv(context, "›", 20f, C_ACCENT(), true)
+            arrow.gravity = Gravity.END
+            header.addView(arrow)
+
+            optionCard.addView(header)
+            optionCard.addView(tv(context, sub, 13f, C_MUTED(), false).apply {
+                setPadding(0, dp(context, 4), 0, 0)
             })
-        } else {
-            for (hanzi in marked) {
-                var found: HskData.WordEntry? = null
-                for (w in HskData.allWords()) {
-                    if (w.hanzi == hanzi) { found = w; break }
+
+            optionCard.setOnClickListener {
+                when (title) {
+                    "Review mistakes" -> startPracticeSession(context, "mistakes")
+                    "Practice words" -> startPracticeSession(context, "spaced")
+                    "Quick practice" -> startPracticeSession(context, "random")
                 }
-                if (found != null) content.addView(reviewRow(context, found))
             }
+
+            content.addView(optionCard)
         }
 
         content.addView(View(context).apply {
@@ -1026,6 +1079,231 @@ class MainActivity : Activity() {
         return root
     }
 
+    private fun startPracticeSession(context: Context, mode: String) {
+        val source = when (mode) {
+            "mistakes" -> {
+                val marked = prefs.getStringSet("review_words", emptySet()) ?: emptySet()
+                HskData.allWords().filter { it.hanzi in marked }
+            }
+            "spaced" -> HskData.allWords().filter {
+                !prefs.getBoolean("done:${it.lessonId}", false)
+            }
+            else -> HskData.allWords()
+        }
+        val sessionWords = source.distinctBy { it.hanzi }.shuffled()
+            .take(if (mode == "random") 5 else 10)
+
+        if (sessionWords.isEmpty()) {
+            Toast.makeText(context, "No words to practice yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        openPracticeQuiz(mode, sessionWords)
+    }
+
+    private fun openPracticeQuiz(mode: String, words: List<HskData.WordEntry>) {
+        currentTab = -1
+        container.removeAllViews()
+        val context = this
+
+        val root = LinearLayout(context)
+        root.orientation = LinearLayout.VERTICAL
+        root.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        root.setBackgroundColor(C_BG())
+
+        val content = LinearLayout(context)
+        content.orientation = LinearLayout.VERTICAL
+        content.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
+
+        val top = LinearLayout(context)
+        top.orientation = LinearLayout.HORIZONTAL
+        top.gravity = Gravity.CENTER_VERTICAL
+        top.addView(backButton(context) { switchTab(TAB_PRACTICE) })
+        val title = when (mode) {
+            "mistakes" -> "Review Mistakes"
+            "spaced" -> "Practice Words"
+            else -> "Quick Practice"
+        }
+        top.addView(tv(context, title, 20f, C_TEXT(), true).apply {
+            setPadding(dp(context, 10), 0, 0, 0)
+        })
+        content.addView(top)
+
+        val counter = tv(context, "", 12f, C_MUTED(), true)
+        counter.setPadding(0, dp(context, 16), 0, dp(context, 6))
+        content.addView(counter)
+        val progress = progressBar(context, 0)
+        content.addView(progress)
+
+        val prompt = tv(context, "", 48f, C_HANZI(), true)
+        prompt.gravity = Gravity.CENTER
+        prompt.setPadding(0, dp(context, 28), 0, dp(context, 8))
+        content.addView(prompt)
+
+        val instruction = tv(context, "", 15f, C_MUTED(), false)
+        instruction.gravity = Gravity.CENTER
+        instruction.setPadding(0, 0, 0, dp(context, 24))
+        content.addView(instruction)
+
+        val optionsBox = LinearLayout(context)
+        optionsBox.orientation = LinearLayout.VERTICAL
+        optionsBox.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        content.addView(optionsBox)
+
+        val feedback = tv(context, "", 15f, C_TEXT(), true)
+        feedback.setPadding(0, dp(context, 12), 0, dp(context, 12))
+        content.addView(feedback)
+
+        var index = 0
+        var score = 0
+        var selected: HskData.WordEntry? = null
+        var answered = false
+        lateinit var renderQuestion: () -> Unit
+
+        val checkBtn = primaryButton(context, "Check") {}
+        checkBtn.isEnabled = false
+        checkBtn.setOnClickListener {
+            if (!answered) {
+                val choice = selected ?: return@setOnClickListener
+                val correct = words[index]
+                answered = true
+                val isCorrect = choice.hanzi == correct.hanzi
+                if (isCorrect) score++
+
+                val mistakes = prefs.getStringSet("review_words", emptySet())?.toMutableSet()
+                    ?: mutableSetOf()
+                if (isCorrect) mistakes.remove(correct.hanzi) else mistakes.add(correct.hanzi)
+                prefs.edit().putStringSet("review_words", mistakes).apply()
+
+                feedback.text = if (isCorrect) {
+                    "Correct!"
+                } else {
+                    "Correct answer: ${correct.hanzi} · ${correct.pinyin} · ${correct.meaning}"
+                }
+                feedback.setTextColor(if (isCorrect) C_SUCCESS() else C_ACCENT())
+                checkBtn.text = if (index == words.lastIndex) "See results" else "Continue"
+            } else if (index == words.lastIndex) {
+                showPracticeResults(mode, score, words.size)
+            } else {
+                index++
+                renderQuestion()
+            }
+        }
+
+        renderQuestion = {
+            selected = null
+            answered = false
+            feedback.text = ""
+            checkBtn.text = "Check"
+            checkBtn.isEnabled = false
+
+            val correct = words[index]
+            val askMeaning = index % 2 == 0
+            prompt.text = if (askMeaning) correct.hanzi else correct.meaning
+            prompt.textSize = if (askMeaning) 48f else 24f
+            instruction.text = if (askMeaning) {
+                "${correct.pinyin}\nChoose the correct meaning"
+            } else {
+                "Choose the correct hanzi"
+            }
+            counter.text = "QUESTION ${index + 1} OF ${words.size}"
+            progress.progress = index * 100 / words.size
+
+            optionsBox.removeAllViews()
+            val distractors = HskData.allWords()
+                .filter { it.hanzi != correct.hanzi }
+                .shuffled().take(3)
+            val options = (distractors + correct).shuffled()
+
+            for (option in options) {
+                val optionBtn = Button(context)
+                optionBtn.text = if (askMeaning) option.meaning else option.hanzi
+                optionBtn.textSize = if (askMeaning) 16f else 28f
+                optionBtn.setTextColor(C_TEXT())
+                optionBtn.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+                optionBtn.isAllCaps = false
+                optionBtn.gravity = Gravity.CENTER
+                optionBtn.setPadding(dp(context, 14), dp(context, 16), dp(context, 14), dp(context, 16))
+                optionBtn.setOnClickListener {
+                    if (answered) return@setOnClickListener
+                    selected = option
+                    checkBtn.isEnabled = true
+                    for (i in 0 until optionsBox.childCount) {
+                        val child = optionsBox.getChildAt(i)
+                        if (child is Button) {
+                            child.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+                            child.setTextColor(C_TEXT())
+                        }
+                    }
+                    optionBtn.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
+                    optionBtn.setTextColor(Color.WHITE)
+                }
+                optionsBox.addView(optionBtn)
+                optionsBox.addView(View(context).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 10)
+                    )
+                })
+            }
+        }
+
+        content.addView(checkBtn)
+        root.addView(content)
+        container.addView(root)
+        renderQuestion()
+    }
+
+    private fun showPracticeResults(mode: String, score: Int, total: Int) {
+        val baseXp = when (mode) {
+            "mistakes" -> 20
+            "spaced" -> 10
+            else -> 5
+        }
+        val earned = score * baseXp / total
+        prefs.edit().putInt("xp_total", prefs.getInt("xp_total", 0) + earned).apply()
+
+        currentTab = -1
+        container.removeAllViews()
+        val context = this
+        val root = LinearLayout(context)
+        root.orientation = LinearLayout.VERTICAL
+        root.gravity = Gravity.CENTER
+        root.setPadding(dp(context, 24), dp(context, 24), dp(context, 24), dp(context, 80))
+        root.setBackgroundColor(C_BG())
+
+        val resultCard = card(context)
+        resultCard.gravity = Gravity.CENTER
+        resultCard.addView(tv(context, "Practice complete", 24f, C_TEXT(), true).apply {
+            gravity = Gravity.CENTER
+        })
+        resultCard.addView(tv(context, "$score / $total correct", 18f, C_TEXT(), false).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(context, 16), 0, 0)
+        })
+        resultCard.addView(tv(context, "${score * 100 / total}% accuracy", 14f, C_MUTED(), false).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(context, 4), 0, dp(context, 16))
+        })
+        resultCard.addView(tv(context, "+$earned XP", 32f, C_SUCCESS(), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(context, 24))
+        })
+        resultCard.addView(primaryButton(context, "Back to Practice") {
+            switchTab(TAB_PRACTICE)
+        })
+        root.addView(resultCard)
+        container.addView(root)
+    }
+
     private fun reviewRow(context: Context, w: HskData.WordEntry): LinearLayout {
         val row = LinearLayout(context)
         row.orientation = LinearLayout.VERTICAL
@@ -1035,9 +1313,9 @@ class MainActivity : Activity() {
         )
         row.setPadding(dp(context, 12), dp(context, 10), dp(context, 12), dp(context, 10))
 
-        row.addView(tv(context, w.hanzi, 22f, C_TEXT, true))
-        row.addView(tv(context, w.pinyin, 15f, C_PINYIN, false))
-        row.addView(tv(context, w.meaning, 15f, C_TEXT, false))
+        row.addView(tv(context, w.hanzi, 22f, C_TEXT(), true))
+        row.addView(tv(context, w.pinyin, 15f, C_PINYIN(), false))
+        row.addView(tv(context, w.meaning, 15f, C_TEXT(), false))
 
         row.setOnClickListener {
             Toast.makeText(context, w.meaning, Toast.LENGTH_SHORT).show()
@@ -1057,7 +1335,7 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        root.setBackgroundColor(C_BG)
+        root.setBackgroundColor(C_BG())
 
         val scroll = ScrollView(context)
         scroll.layoutParams = ViewGroup.LayoutParams(
@@ -1074,12 +1352,12 @@ class MainActivity : Activity() {
         content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
 
         val avatar = TextView(context)
-        avatar.text = "问"
-        avatar.textSize = 32f
+        avatar.text = "问书"
+        avatar.textSize = 28f
         avatar.setTypeface(avatar.typeface, Typeface.BOLD)
-        avatar.setTextColor(Color.parseColor("#0A0A0A"))
-        avatar.setBackgroundResource(R.drawable.btn_primary)
-        avatar.layoutParams = ViewGroup.LayoutParams(dp(context, 64), dp(context, 64))
+        avatar.setTextColor(Color.WHITE)
+        avatar.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
+        avatar.layoutParams = ViewGroup.LayoutParams(dp(context, 96), dp(context, 64))
         avatar.gravity = Gravity.CENTER
 
         val avatarWrap = LinearLayout(context)
@@ -1091,12 +1369,12 @@ class MainActivity : Activity() {
         avatarWrap.addView(avatar)
         content.addView(avatarWrap)
 
-        content.addView(tv(context, "Learner", 20f, C_TEXT, true).apply {
+        content.addView(tv(context, "Learner", 20f, C_TEXT(), true).apply {
             setPadding(0, dp(context, 8), 0, dp(context, 2))
             gravity = Gravity.CENTER
         })
 
-        content.addView(tv(context, "HSK 2 · 300 words", 13f, C_MUTED, false).apply {
+        content.addView(tv(context, "HSK 2 · 300 words", 13f, C_MUTED(), false).apply {
             gravity = Gravity.CENTER
         })
 
@@ -1110,9 +1388,9 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
-        val sTitle = tv(context, "Your stats", 16f, C_TEXT, true)
-        sTitle.setPadding(0, 0, 0, dp(context, 12))
-        statsCard.addView(sTitle)
+        val statsTitle = tv(context, "Your stats", 16f, C_TEXT(), true)
+        statsTitle.setPadding(0, 0, 0, dp(context, 12))
+        statsCard.addView(statsTitle)
 
         val totalLessons = HskData.modules().sumOf { it.lessons.size }
         var doneLessons = 0
@@ -1136,6 +1414,45 @@ class MainActivity : Activity() {
         statsCard.addView(row)
         content.addView(statsCard)
 
+        // Settings card
+        val settingsCard = card(context)
+        settingsCard.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        settingsCard.setPadding(0, dp(context, 24), 0, dp(context, 12))
+
+        val sTitle = tv(context, "Settings", 16f, C_TEXT(), true)
+        sTitle.setPadding(0, 0, 0, dp(context, 12))
+        settingsCard.addView(sTitle)
+
+        // Dark mode toggle
+        val darkRow = LinearLayout(context)
+        darkRow.orientation = LinearLayout.HORIZONTAL
+        darkRow.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        darkRow.setPadding(0, 0, 0, dp(context, 12))
+
+        darkRow.addView(tv(context, "Dark mode", 15f, C_TEXT(), false), wlp(context))
+
+        val darkToggle = TextView(context)
+        darkToggle.text = if (isDarkMode()) "ON" else "OFF"
+        darkToggle.textSize = 14f
+        darkToggle.setTextColor(if (isDarkMode()) C_SUCCESS() else C_MUTED())
+        darkToggle.setTypeface(darkToggle.typeface, Typeface.BOLD)
+        darkToggle.gravity = Gravity.CENTER
+        darkToggle.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+        darkToggle.layoutParams = ViewGroup.LayoutParams(dp(context, 60), dp(context, 36))
+        darkToggle.setOnClickListener {
+            setDarkMode(!isDarkMode())
+        }
+        darkRow.addView(darkToggle)
+
+        settingsCard.addView(darkRow)
+        content.addView(settingsCard)
+
         content.addView(View(context).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
         })
@@ -1151,9 +1468,9 @@ class MainActivity : Activity() {
         col.layoutParams = wlp(context)
         col.gravity = Gravity.CENTER
 
-        col.addView(tv(context, value, 20f, C_ACCENT, true))
+        col.addView(tv(context, value, 20f, C_ACCENT(), true))
 
-        val l = tv(context, label, 11f, C_MUTED, true)
+        val l = tv(context, label, 11f, C_MUTED(), true)
         l.setPadding(dp(context, 4), 0, 0, 0)
         col.addView(l)
         return col
@@ -1162,7 +1479,7 @@ class MainActivity : Activity() {
     private fun dividerLine(context: Context): View {
         val v = View(context)
         v.layoutParams = ViewGroup.LayoutParams(1, dp(context, 40))
-        v.setBackgroundColor(C_BORDER)
+        v.setBackgroundColor(C_BORDER())
         return v
     }
 }

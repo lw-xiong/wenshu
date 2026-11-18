@@ -9,6 +9,7 @@ Iteration 6 — COMPLETE (UX POLISH: vertical button spacing, smooth flip, shuff
 Iteration 7 — COMPLETE (CRITICAL FIXES: next lesson button enabled, flip mirror fixed)
 Iteration 8 — COMPLETE (FEATURE: TTS audio pronunciation + memory cleanup)
 Iteration 9 — COMPLETE (FLIP FIX: proper two-phase flip matching HTML version)
+Iteration 10 — COMPLETE (问书 logo, dynamic dark mode, Duolingo-style practice quiz, v1.1.0)
 
 Acceptance criteria:
 1. Real Android APK (Kotlin), not a PWA — PASS (build/hsk-app.apk)
