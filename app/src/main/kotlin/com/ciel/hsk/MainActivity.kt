@@ -1805,7 +1805,11 @@ class MainActivity : Activity() {
         val avatar = TextView(context)
         avatar.text = "问书"
         avatar.textSize = 28f
-        avatar.typeface = Typeface.createFromAsset(context.assets, "fonts/Alibaba-PuHuiTi-Heavy.ttf")
+        try {
+            avatar.typeface = Typeface.createFromAsset(context.assets, "fonts/Alibaba-PuHuiTi-Heavy.ttf")
+        } catch (_: Exception) {
+            // Font unavailable on this device; fall back to system typeface
+        }
         avatar.setTextColor(Color.WHITE)
         avatar.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         avatar.layoutParams = ViewGroup.LayoutParams(dp(context, 96), dp(context, 64))
