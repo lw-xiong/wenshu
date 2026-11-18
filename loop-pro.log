@@ -11,6 +11,8 @@ Iteration 8 — COMPLETE (FEATURE: TTS audio pronunciation + memory cleanup)
 Iteration 9 — COMPLETE (FLIP FIX: proper two-phase flip matching HTML version)
 Iteration 10 — COMPLETE (问书 logo, dynamic dark mode, Duolingo-style practice quiz, v1.1.0)
 Iteration 11 — COMPLETE (NAV FIX: weighted content container reveals five-tab bar, Practice visible, v1.1.1)
+Iteration 12 — COMPLETE (true dark system bars, Switch, aligned controls, seven question types,
+  Easy/Medium/Hard/HSK 25, pair matching, coins, achievements, v1.2.0)
 
 Acceptance criteria:
 1. Real Android APK (Kotlin), not a PWA — PASS (build/hsk-app.apk)

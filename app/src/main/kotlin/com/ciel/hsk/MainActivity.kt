@@ -39,8 +39,8 @@ class MainActivity : Activity() {
     private val tabIcons = arrayOf("⌂", "学", "词", "练", "◉")
 
     // Design tokens — dynamic light/dark
-    private fun C_BG(): Int = if (isDarkMode()) Color.parseColor("#1A1A1A") else Color.parseColor("#F8F6F2")
-    private fun C_CARD(): Int = if (isDarkMode()) Color.parseColor("#2D2D2D") else Color.parseColor("#FFFFFF")
+    private fun C_BG(): Int = if (isDarkMode()) Color.parseColor("#0A0A0A") else Color.parseColor("#F8F6F2")
+    private fun C_CARD(): Int = if (isDarkMode()) Color.parseColor("#171717") else Color.parseColor("#FFFFFF")
     private fun C_TEXT(): Int = if (isDarkMode()) Color.parseColor("#FFFFFF") else Color.parseColor("#171717")
     private fun C_MUTED(): Int = if (isDarkMode()) Color.parseColor("#A0A0A0") else Color.parseColor("#77736E")
     private fun C_ACCENT(): Int = if (isDarkMode()) Color.parseColor("#FF6B6B") else Color.parseColor("#C62828")
@@ -56,6 +56,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("hsk_app", Context.MODE_PRIVATE)
+        applySystemBars()
 
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
@@ -105,9 +106,32 @@ class MainActivity : Activity() {
         return prefs.getBoolean("dark_mode", false)
     }
 
+    private fun applySystemBars() {
+        window.statusBarColor = C_BG()
+        window.navigationBarColor = C_BG()
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(C_BG()))
+        window.decorView.setBackgroundColor(C_BG())
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            var flags = window.decorView.systemUiVisibility
+            flags = if (isDarkMode()) {
+                flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            } else {
+                flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                flags = if (isDarkMode()) {
+                    flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                } else {
+                    flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                }
+            }
+            window.decorView.systemUiVisibility = flags
+        }
+    }
+
     private fun setDarkMode(dark: Boolean) {
         prefs.edit().putBoolean("dark_mode", dark).apply()
-        // Recreate activity to apply theme
+        applySystemBars()
         recreate()
     }
 
@@ -221,6 +245,19 @@ class MainActivity : Activity() {
         return done
     }
 
+    private fun currentStats(): PlayerStats {
+        val lessonsDone = HskData.modules().sumOf { mod ->
+            mod.lessons.count { prefs.getBoolean("done:${it.id}", false) }
+        }
+        return PlayerStats(
+            lessonsDone = lessonsDone,
+            xp = prefs.getInt("xp_total", 0),
+            coins = prefs.getInt("coins_total", 0),
+            correctAnswers = prefs.getInt("practice_correct_total", 0),
+            perfectSessions = prefs.getInt("perfect_sessions", 0)
+        )
+    }
+
     private fun wlp(context: Context): LinearLayout.LayoutParams {
         val p = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
         p.weight = 1f
@@ -259,8 +296,11 @@ class MainActivity : Activity() {
         b.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         b.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            dp(context, 52)
         )
+        b.minHeight = 0
+        b.minimumHeight = 0
+        b.gravity = Gravity.CENTER
         b.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         b.isAllCaps = false
         b.setOnClickListener { onClick() }
@@ -335,8 +375,8 @@ class MainActivity : Activity() {
         row1.setPadding(0, 0, 0, dp(context, 16))
 
         row1.addView(statColumn(context, doneLessons.toString(), "lessons done"), wlp(context))
-        row1.addView(statColumn(context, HskData.allWords().size.toString(), "words total"), wlp(context))
         row1.addView(statColumn(context, prefs.getInt("xp_total", 0).toString(), "XP earned"), wlp(context))
+        row1.addView(statColumn(context, prefs.getInt("coins_total", 0).toString(), "coins"), wlp(context))
         progressCard.addView(row1)
 
         progressCard.addView(progressBar(context, if (totalLessons > 0) (doneLessons * 100 / totalLessons) else 0))
@@ -743,7 +783,7 @@ class MainActivity : Activity() {
         nav.setPadding(0, dp(context, 12), 0, 0)
 
         val btnNext = Button(context)
-        val btnPrev = TextView(context)
+        val btnPrev = Button(context)
 
         btnNext.text = if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
         btnNext.textSize = 15f
@@ -751,8 +791,10 @@ class MainActivity : Activity() {
         btnNext.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         btnNext.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            dp(context, 52)
         )
+        btnNext.minHeight = 0
+        btnNext.minimumHeight = 0
         btnNext.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         btnNext.isAllCaps = false
 
@@ -762,10 +804,13 @@ class MainActivity : Activity() {
         btnPrev.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
         btnPrev.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            dp(context, 52)
         )
+        btnPrev.minHeight = 0
+        btnPrev.minimumHeight = 0
         btnPrev.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         btnPrev.gravity = Gravity.CENTER
+        btnPrev.isAllCaps = false
         btnPrev.isEnabled = currentIdx > 0
 
         // Shared navigation logic
@@ -819,17 +864,20 @@ class MainActivity : Activity() {
         nav.addView(btnPrev)
 
         // Shuffle button
-        val btnShuffle = TextView(context)
+        val btnShuffle = Button(context)
         btnShuffle.text = "Shuffle"
         btnShuffle.textSize = 14f
         btnShuffle.setTextColor(C_ACCENT())
         btnShuffle.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
         btnShuffle.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            dp(context, 52)
         )
+        btnShuffle.minHeight = 0
+        btnShuffle.minimumHeight = 0
         btnShuffle.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         btnShuffle.gravity = Gravity.CENTER
+        btnShuffle.isAllCaps = false
         btnShuffle.setOnClickListener {
             lesson.words = lesson.words.shuffled()
             goTo(0)
@@ -984,98 +1032,58 @@ class MainActivity : Activity() {
     private fun buildPracticeHub(context: Context): View {
         val root = LinearLayout(context)
         root.orientation = LinearLayout.VERTICAL
-        root.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
         root.setBackgroundColor(C_BG())
 
         val scroll = ScrollView(context)
-        scroll.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-
         val content = LinearLayout(context)
         content.orientation = LinearLayout.VERTICAL
-        content.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 24))
 
         val top = LinearLayout(context)
         top.orientation = LinearLayout.HORIZONTAL
-        top.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        top.gravity = Gravity.CENTER_VERTICAL
         top.setPadding(0, 0, 0, dp(context, 16))
-
         top.addView(backButton(context) { switchTab(TAB_HOME) })
-
-        val title = tv(context, "Practice", 20f, C_TEXT(), true)
-        title.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        title.setPadding(dp(context, 10), 0, 0, 0)
-        title.gravity = Gravity.CENTER_VERTICAL
-        top.addView(title)
-
+        top.addView(tv(context, "Practice", 20f, C_TEXT(), true).apply {
+            setPadding(dp(context, 10), 0, 0, 0)
+        })
         content.addView(top)
 
-        content.addView(tv(context, "Targeted practice · ${prefs.getInt("xp_total", 0)} XP earned", 13f, C_MUTED(), false).apply {
+        content.addView(tv(context, "${prefs.getInt("xp_total", 0)} XP · ${prefs.getInt("coins_total", 0)} coins", 14f, C_GOLD(), true).apply {
             setPadding(0, 0, 0, dp(context, 16))
         })
 
-        // Practice options
-        val practiceOptions = listOf(
-            "Review mistakes" to "Words you got wrong",
-            "Practice words" to "Spaced repetition review",
-            "Quick practice" to "Random vocabulary drill"
+        val options = listOf(
+            Triple("Review mistakes", "15 mixed questions · words you missed · 20 XP", "mistakes"),
+            Triple("Easy", "10 questions · meanings and hanzi · 10 XP", "easy"),
+            Triple("Medium", "15 questions · listening and pinyin · 20 XP", "medium"),
+            Triple("Hard", "20 questions · sentences and listening · 30 XP", "hard"),
+            Triple("HSK Reading", "25 questions · official reading length · 30 XP", "hsk"),
+            Triple("Match words", "5 boards · 20 vocabulary pairs · 15 XP", "match_words"),
+            Triple("Match sentences", "3 boards · 12 textbook sentence pairs · 20 XP", "match_sentences")
         )
 
-        for ((title, sub) in practiceOptions) {
+        for ((title, subtitle, mode) in options) {
             val optionCard = card(context)
-            optionCard.layoutParams = ViewGroup.LayoutParams(
+            optionCard.layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            ).apply { setMargins(0, 0, 0, dp(context, 12)) }
             optionCard.setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 14))
 
             val header = LinearLayout(context)
             header.orientation = LinearLayout.HORIZONTAL
-            header.layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-
-            header.addView(tv(context, title, 16f, C_TEXT(), true))
-
-            val arrow = tv(context, "›", 20f, C_ACCENT(), true)
-            arrow.gravity = Gravity.END
-            header.addView(arrow)
-
+            header.gravity = Gravity.CENTER_VERTICAL
+            header.addView(tv(context, title, 16f, C_TEXT(), true), wlp(context))
+            header.addView(tv(context, "›", 20f, C_ACCENT(), true))
             optionCard.addView(header)
-            optionCard.addView(tv(context, sub, 13f, C_MUTED(), false).apply {
+            optionCard.addView(tv(context, subtitle, 13f, C_MUTED(), false).apply {
                 setPadding(0, dp(context, 4), 0, 0)
             })
-
-            optionCard.setOnClickListener {
-                when (title) {
-                    "Review mistakes" -> startPracticeSession(context, "mistakes")
-                    "Practice words" -> startPracticeSession(context, "spaced")
-                    "Quick practice" -> startPracticeSession(context, "random")
-                }
-            }
-
+            optionCard.contentDescription = "practice_$mode"
+            optionCard.setOnClickListener { startPracticeSession(context, mode) }
             content.addView(optionCard)
         }
-
-        content.addView(View(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 100))
-        })
 
         scroll.addView(content)
         root.addView(scroll)
@@ -1083,46 +1091,43 @@ class MainActivity : Activity() {
     }
 
     private fun startPracticeSession(context: Context, mode: String) {
-        val source = when (mode) {
-            "mistakes" -> {
-                val marked = prefs.getStringSet("review_words", emptySet()) ?: emptySet()
-                HskData.allWords().filter { it.hanzi in marked }
-            }
-            "spaced" -> HskData.allWords().filter {
-                !prefs.getBoolean("done:${it.lessonId}", false)
-            }
-            else -> HskData.allWords()
-        }
-        val sessionWords = source.distinctBy { it.hanzi }.shuffled()
-            .take(if (mode == "random") 5 else 10)
-
-        if (sessionWords.isEmpty()) {
-            Toast.makeText(context, "No words to practice yet", Toast.LENGTH_SHORT).show()
+        if (mode.startsWith("match_")) {
+            openMatchingPractice(mode)
             return
         }
-        openPracticeQuiz(mode, sessionWords)
+        val available = HskData.allWords().filter { it.hskLevel <= 2 }
+        val source = if (mode == "mistakes") {
+            val marked = prefs.getStringSet("review_words", emptySet()) ?: emptySet()
+            available.filter { it.hanzi in marked }
+        } else {
+            available
+        }
+        val difficulty = when (mode) {
+            "easy" -> PracticeDifficulty.EASY
+            "hard" -> PracticeDifficulty.HARD
+            "hsk" -> PracticeDifficulty.HSK
+            else -> PracticeDifficulty.MEDIUM
+        }
+        if (source.distinctBy { it.hanzi }.size < 4) {
+            Toast.makeText(context, "At least four practice words are needed", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val questions = PracticeData.generate(difficulty, source.shuffled())
+        openPracticeQuiz(mode, questions)
     }
 
-    private fun openPracticeQuiz(mode: String, words: List<HskData.WordEntry>) {
+    private fun openPracticeQuiz(mode: String, questions: List<PracticeQuestion>) {
         currentTab = -1
         container.removeAllViews()
         val context = this
-
         val root = LinearLayout(context)
         root.orientation = LinearLayout.VERTICAL
-        root.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
         root.setBackgroundColor(C_BG())
 
+        val scroll = ScrollView(context)
         val content = LinearLayout(context)
         content.orientation = LinearLayout.VERTICAL
-        content.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 24))
 
         val top = LinearLayout(context)
         top.orientation = LinearLayout.HORIZONTAL
@@ -1130,8 +1135,10 @@ class MainActivity : Activity() {
         top.addView(backButton(context) { switchTab(TAB_PRACTICE) })
         val title = when (mode) {
             "mistakes" -> "Review Mistakes"
-            "spaced" -> "Practice Words"
-            else -> "Quick Practice"
+            "easy" -> "Easy Practice"
+            "hard" -> "Hard Practice"
+            "hsk" -> "HSK Reading"
+            else -> "Medium Practice"
         }
         top.addView(tv(context, title, 20f, C_TEXT(), true).apply {
             setPadding(dp(context, 10), 0, 0, 0)
@@ -1144,58 +1151,74 @@ class MainActivity : Activity() {
         val progress = progressBar(context, 0)
         content.addView(progress)
 
-        val prompt = tv(context, "", 48f, C_HANZI(), true)
+        val prompt = tv(context, "", 42f, C_HANZI(), true)
         prompt.gravity = Gravity.CENTER
-        prompt.setPadding(0, dp(context, 28), 0, dp(context, 8))
+        prompt.setPadding(0, dp(context, 24), 0, dp(context, 8))
         content.addView(prompt)
-
         val instruction = tv(context, "", 15f, C_MUTED(), false)
         instruction.gravity = Gravity.CENTER
-        instruction.setPadding(0, 0, 0, dp(context, 24))
+        instruction.setPadding(0, 0, 0, dp(context, 16))
         content.addView(instruction)
+
+        val audioBtn = TextView(context)
+        audioBtn.text = "🔊 Play audio"
+        audioBtn.textSize = 16f
+        audioBtn.setTextColor(C_ACCENT())
+        audioBtn.gravity = Gravity.CENTER
+        audioBtn.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        content.addView(audioBtn)
+
+        val tokenAnswer = tv(context, "", 24f, C_TEXT(), true)
+        tokenAnswer.gravity = Gravity.CENTER
+        tokenAnswer.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        tokenAnswer.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+        content.addView(tokenAnswer)
 
         val optionsBox = LinearLayout(context)
         optionsBox.orientation = LinearLayout.VERTICAL
-        optionsBox.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
         content.addView(optionsBox)
-
         val feedback = tv(context, "", 15f, C_TEXT(), true)
         feedback.setPadding(0, dp(context, 12), 0, dp(context, 12))
         content.addView(feedback)
 
         var index = 0
         var score = 0
-        var selected: HskData.WordEntry? = null
+        var selected: String? = null
         var answered = false
+        val built = mutableListOf<String>()
         lateinit var renderQuestion: () -> Unit
-
         val checkBtn = primaryButton(context, "Check") {}
-        checkBtn.isEnabled = false
+
+        audioBtn.setOnClickListener {
+            val speech = questions[index].speech ?: return@setOnClickListener
+            if (::tts.isInitialized) {
+                tts.speak(speech, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+            } else {
+                Toast.makeText(context, "Audio unavailable", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         checkBtn.setOnClickListener {
             if (!answered) {
-                val choice = selected ?: return@setOnClickListener
-                val correct = words[index]
+                val question = questions[index]
+                val isCorrect = if (question.type == QuestionType.SENTENCE_ORDER) {
+                    built.joinToString("") == question.answer
+                } else {
+                    selected == question.answer
+                }
                 answered = true
-                val isCorrect = choice.hanzi == correct.hanzi
                 if (isCorrect) score++
 
-                val mistakes = prefs.getStringSet("review_words", emptySet())?.toMutableSet()
-                    ?: mutableSetOf()
-                if (isCorrect) mistakes.remove(correct.hanzi) else mistakes.add(correct.hanzi)
-                prefs.edit().putStringSet("review_words", mistakes).apply()
-
-                feedback.text = if (isCorrect) {
-                    "Correct!"
-                } else {
-                    "Correct answer: ${correct.hanzi} · ${correct.pinyin} · ${correct.meaning}"
+                question.wordKey?.let { key ->
+                    val mistakes = prefs.getStringSet("review_words", emptySet())?.toMutableSet() ?: mutableSetOf()
+                    if (isCorrect) mistakes.remove(key) else mistakes.add(key)
+                    prefs.edit().putStringSet("review_words", mistakes).apply()
                 }
+                feedback.text = if (isCorrect) "Correct!" else "Correct answer: ${question.solution}"
                 feedback.setTextColor(if (isCorrect) C_SUCCESS() else C_ACCENT())
-                checkBtn.text = if (index == words.lastIndex) "See results" else "Continue"
-            } else if (index == words.lastIndex) {
-                showPracticeResults(mode, score, words.size)
+                checkBtn.text = if (index == questions.lastIndex) "See results" else "Continue"
+            } else if (index == questions.lastIndex) {
+                showPracticeResults(mode, score, questions.size)
             } else {
                 index++
                 renderQuestion()
@@ -1205,74 +1228,285 @@ class MainActivity : Activity() {
         renderQuestion = {
             selected = null
             answered = false
+            built.clear()
             feedback.text = ""
+            tokenAnswer.text = ""
             checkBtn.text = "Check"
             checkBtn.isEnabled = false
-
-            val correct = words[index]
-            val askMeaning = index % 2 == 0
-            prompt.text = if (askMeaning) correct.hanzi else correct.meaning
-            prompt.textSize = if (askMeaning) 48f else 24f
-            instruction.text = if (askMeaning) {
-                "${correct.pinyin}\nChoose the correct meaning"
-            } else {
-                "Choose the correct hanzi"
-            }
-            counter.text = "QUESTION ${index + 1} OF ${words.size}"
-            progress.progress = index * 100 / words.size
-
             optionsBox.removeAllViews()
-            val distractors = HskData.allWords()
-                .filter { it.hanzi != correct.hanzi }
-                .shuffled().take(3)
-            val options = (distractors + correct).shuffled()
 
-            for (option in options) {
-                val optionBtn = Button(context)
-                optionBtn.text = if (askMeaning) option.meaning else option.hanzi
-                optionBtn.textSize = if (askMeaning) 16f else 28f
-                optionBtn.setTextColor(C_TEXT())
-                optionBtn.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
-                optionBtn.isAllCaps = false
-                optionBtn.gravity = Gravity.CENTER
-                optionBtn.setPadding(dp(context, 14), dp(context, 16), dp(context, 14), dp(context, 16))
-                optionBtn.setOnClickListener {
-                    if (answered) return@setOnClickListener
-                    selected = option
-                    checkBtn.isEnabled = true
-                    for (i in 0 until optionsBox.childCount) {
-                        val child = optionsBox.getChildAt(i)
-                        if (child is Button) {
-                            child.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
-                            child.setTextColor(C_TEXT())
-                        }
+            val question = questions[index]
+            counter.text = "QUESTION ${index + 1} OF ${questions.size}"
+            progress.progress = index * 100 / questions.size
+            prompt.text = question.prompt
+            prompt.textSize = when (question.type) {
+                QuestionType.HANZI, QuestionType.FILL_BLANK, QuestionType.SENTENCE_ORDER, QuestionType.TRUE_FALSE -> 24f
+                QuestionType.LISTENING -> 20f
+                else -> 42f
+            }
+            instruction.text = question.instruction
+            audioBtn.visibility = if (question.speech != null) View.VISIBLE else View.GONE
+            tokenAnswer.visibility = if (question.type == QuestionType.SENTENCE_ORDER) View.VISIBLE else View.GONE
+
+            if (question.type == QuestionType.SENTENCE_ORDER) {
+                for (token in question.tokens) {
+                    val tokenBtn = Button(context)
+                    tokenBtn.text = token
+                    tokenBtn.textSize = 22f
+                    tokenBtn.setTextColor(C_TEXT())
+                    tokenBtn.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+                    tokenBtn.isAllCaps = false
+                    tokenBtn.layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)
+                    ).apply { setMargins(0, 0, 0, dp(context, 10)) }
+                    tokenBtn.setOnClickListener {
+                        if (answered || !tokenBtn.isEnabled) return@setOnClickListener
+                        built.add(token)
+                        tokenAnswer.text = built.joinToString("")
+                        tokenBtn.isEnabled = false
+                        tokenBtn.alpha = 0.35f
+                        checkBtn.isEnabled = built.size == question.tokens.size
                     }
-                    optionBtn.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
-                    optionBtn.setTextColor(Color.WHITE)
+                    optionsBox.addView(tokenBtn)
                 }
-                optionsBox.addView(optionBtn)
-                optionsBox.addView(View(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 10)
-                    )
-                })
+                val resetBtn = Button(context)
+                resetBtn.text = "Reset sentence"
+                resetBtn.setTextColor(C_ACCENT())
+                resetBtn.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+                resetBtn.isAllCaps = false
+                resetBtn.setOnClickListener { renderQuestion() }
+                optionsBox.addView(resetBtn)
+            } else {
+                for (option in question.options) {
+                    val optionBtn = Button(context)
+                    optionBtn.text = option
+                    optionBtn.textSize = when (question.type) {
+                        QuestionType.HANZI -> 28f
+                        QuestionType.FILL_BLANK -> 22f
+                        QuestionType.TRUE_FALSE -> 18f
+                        else -> 16f
+                    }
+                    optionBtn.setTextColor(C_TEXT())
+                    optionBtn.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+                    optionBtn.isAllCaps = false
+                    optionBtn.gravity = Gravity.CENTER
+                    optionBtn.layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 56)
+                    ).apply { setMargins(0, 0, 0, dp(context, 10)) }
+                    optionBtn.setOnClickListener {
+                        if (answered) return@setOnClickListener
+                        selected = option
+                        checkBtn.isEnabled = true
+                        for (i in 0 until optionsBox.childCount) {
+                            val child = optionsBox.getChildAt(i)
+                            if (child is Button) {
+                                child.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+                                child.setTextColor(C_TEXT())
+                            }
+                        }
+                        optionBtn.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
+                        optionBtn.setTextColor(Color.WHITE)
+                    }
+                    optionsBox.addView(optionBtn)
+                }
             }
         }
 
         content.addView(checkBtn)
-        root.addView(content)
+        scroll.addView(content)
+        root.addView(scroll)
         container.addView(root)
         renderQuestion()
     }
 
-    private fun showPracticeResults(mode: String, score: Int, total: Int) {
-        val baseXp = when (mode) {
-            "mistakes" -> 20
-            "spaced" -> 10
-            else -> 5
+    private fun openMatchingPractice(mode: String) {
+        currentTab = -1
+        container.removeAllViews()
+        val context = this
+        val isWords = mode == "match_words"
+        val available = HskData.allWords().filter { it.hskLevel <= 2 }
+        val boards = List(if (isWords) 5 else 3) {
+            if (isWords) PracticeData.wordMatchingBoard(available) else PracticeData.sentenceMatchingBoard()
         }
-        val earned = score * baseXp / total
-        prefs.edit().putInt("xp_total", prefs.getInt("xp_total", 0) + earned).apply()
+        val totalPairs = boards.sumOf { it.size }
+
+        val root = LinearLayout(context)
+        root.orientation = LinearLayout.VERTICAL
+        root.setBackgroundColor(C_BG())
+        val scroll = ScrollView(context)
+        val content = LinearLayout(context)
+        content.orientation = LinearLayout.VERTICAL
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 24))
+
+        val top = LinearLayout(context)
+        top.orientation = LinearLayout.HORIZONTAL
+        top.gravity = Gravity.CENTER_VERTICAL
+        top.addView(backButton(context) { switchTab(TAB_PRACTICE) })
+        top.addView(tv(context, if (isWords) "Match Words" else "Match Sentences", 20f, C_TEXT(), true).apply {
+            setPadding(dp(context, 10), 0, 0, 0)
+        })
+        content.addView(top)
+
+        val counter = tv(context, "", 12f, C_MUTED(), true)
+        counter.setPadding(0, dp(context, 16), 0, dp(context, 6))
+        content.addView(counter)
+        val progress = progressBar(context, 0)
+        content.addView(progress)
+        content.addView(tv(context, "Tap one item from each column to match the pairs. First-attempt matches earn rewards.", 14f, C_MUTED(), false).apply {
+            setPadding(0, dp(context, 16), 0, dp(context, 16))
+        })
+
+        val pairsBox = LinearLayout(context)
+        pairsBox.orientation = LinearLayout.VERTICAL
+        content.addView(pairsBox)
+        val feedback = tv(context, "", 15f, C_TEXT(), true)
+        feedback.setPadding(0, dp(context, 12), 0, dp(context, 12))
+        content.addView(feedback)
+
+        var boardIndex = 0
+        var score = 0
+        lateinit var renderBoard: () -> Unit
+        val nextBtn = primaryButton(context, "Next board") {}
+        nextBtn.isEnabled = false
+        nextBtn.setOnClickListener {
+            if (boardIndex == boards.lastIndex) {
+                showPracticeResults(mode, score, totalPairs)
+            } else {
+                boardIndex++
+                renderBoard()
+            }
+        }
+
+        renderBoard = {
+            pairsBox.removeAllViews()
+            feedback.text = ""
+            nextBtn.isEnabled = false
+            nextBtn.text = if (boardIndex == boards.lastIndex) "See results" else "Next board"
+            counter.text = "BOARD ${boardIndex + 1} OF ${boards.size}"
+            progress.progress = boardIndex * 100 / boards.size
+
+            val pairs = boards[boardIndex]
+            val right = pairs.withIndex().shuffled()
+            val leftButtons = mutableListOf<Button>()
+            val rightButtons = mutableListOf<Button>()
+            val matched = mutableSetOf<Int>()
+            val failed = mutableSetOf<Int>()
+            var selectedLeft: Int? = null
+            var selectedRight: Int? = null
+
+            fun refreshStyles() {
+                for (i in pairs.indices) {
+                    val leftActive = selectedLeft == i
+                    leftButtons[i].background = roundedBg(context,
+                        when {
+                            matched.contains(i) -> C_SUCCESS()
+                            leftActive -> C_ACCENT()
+                            else -> C_CARD()
+                        },
+                        if (matched.contains(i) || leftActive) C_ACCENT() else C_BORDER(), 12)
+                    leftButtons[i].setTextColor(if (matched.contains(i) || leftActive) Color.WHITE else C_TEXT())
+                    val rightIndex = right[i].index
+                    val rightActive = selectedRight == i
+                    rightButtons[i].background = roundedBg(context,
+                        when {
+                            matched.contains(rightIndex) -> C_SUCCESS()
+                            rightActive -> C_ACCENT()
+                            else -> C_CARD()
+                        },
+                        if (matched.contains(rightIndex) || rightActive) C_ACCENT() else C_BORDER(), 12)
+                    rightButtons[i].setTextColor(if (matched.contains(rightIndex) || rightActive) Color.WHITE else C_TEXT())
+                }
+            }
+
+            fun tryMatch() {
+                val left = selectedLeft ?: return
+                val rightPosition = selectedRight ?: return
+                val rightIndex = right[rightPosition].index
+                if (left == rightIndex) {
+                    matched.add(left)
+                    if (!failed.contains(left)) score++
+                    leftButtons[left].isEnabled = false
+                    rightButtons[rightPosition].isEnabled = false
+                    feedback.text = if (matched.size == pairs.size) "Board complete!" else "Matched!"
+                    if (matched.size == pairs.size) nextBtn.isEnabled = true
+                } else {
+                    failed.add(left)
+                    feedback.text = "Not a match — try again"
+                    if (isWords) {
+                        val mistakes = prefs.getStringSet("review_words", emptySet())?.toMutableSet() ?: mutableSetOf()
+                        mistakes.add(pairs[left].first)
+                        prefs.edit().putStringSet("review_words", mistakes).apply()
+                    }
+                }
+                selectedLeft = null
+                selectedRight = null
+                refreshStyles()
+            }
+
+            for (rowIndex in pairs.indices) {
+                val row = LinearLayout(context)
+                row.orientation = LinearLayout.HORIZONTAL
+                row.setPadding(0, 0, 0, dp(context, 10))
+                val height = dp(context, if (isWords) 72 else 92)
+                val leftBtn = Button(context)
+                leftBtn.text = pairs[rowIndex].first
+                leftBtn.textSize = if (isWords) 24f else 16f
+                leftBtn.maxLines = 3
+                leftBtn.gravity = Gravity.CENTER
+                leftBtn.isAllCaps = false
+                leftBtn.layoutParams = LinearLayout.LayoutParams(0, height, 1f)
+                val rightBtn = Button(context)
+                rightBtn.text = right[rowIndex].value.second
+                rightBtn.textSize = if (isWords) 14f else 13f
+                rightBtn.maxLines = 3
+                rightBtn.gravity = Gravity.CENTER
+                rightBtn.isAllCaps = false
+                val rightParams = LinearLayout.LayoutParams(0, height, 1f)
+                rightParams.setMargins(dp(context, 10), 0, 0, 0)
+                rightBtn.layoutParams = rightParams
+
+                leftBtn.setOnClickListener {
+                    if (!matched.contains(rowIndex)) {
+                        selectedLeft = rowIndex
+                        refreshStyles()
+                        tryMatch()
+                    }
+                }
+                rightBtn.setOnClickListener {
+                    if (!matched.contains(right[rowIndex].index)) {
+                        selectedRight = rowIndex
+                        refreshStyles()
+                        tryMatch()
+                    }
+                }
+                leftButtons.add(leftBtn)
+                rightButtons.add(rightBtn)
+                row.addView(leftBtn)
+                row.addView(rightBtn)
+                pairsBox.addView(row)
+            }
+            refreshStyles()
+        }
+
+        content.addView(nextBtn)
+        scroll.addView(content)
+        root.addView(scroll)
+        container.addView(root)
+        renderBoard()
+    }
+
+    private fun showPracticeResults(mode: String, score: Int, total: Int) {
+        val previouslyUnlocked = PracticeData.achievements(currentStats()).filter { it.unlocked }.map { it.id }.toSet()
+        val (earned, coinsEarned) = PracticeData.rewards(mode, score, total)
+        prefs.edit()
+            .putInt("xp_total", prefs.getInt("xp_total", 0) + earned)
+            .putInt("coins_total", prefs.getInt("coins_total", 0) + coinsEarned)
+            .putInt("practice_correct_total", prefs.getInt("practice_correct_total", 0) + score)
+            .putInt("perfect_sessions", prefs.getInt("perfect_sessions", 0) + if (score == total) 1 else 0)
+            .apply()
+        val newAchievements = PracticeData.achievements(currentStats()).filter {
+            it.unlocked && it.id !in previouslyUnlocked
+        }
 
         currentTab = -1
         container.removeAllViews()
@@ -1298,8 +1532,17 @@ class MainActivity : Activity() {
         })
         resultCard.addView(tv(context, "+$earned XP", 32f, C_SUCCESS(), true).apply {
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(context, 24))
         })
+        resultCard.addView(tv(context, "+$coinsEarned coins", 24f, C_GOLD(), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(context, 4), 0, dp(context, 16))
+        })
+        if (newAchievements.isNotEmpty()) {
+            resultCard.addView(tv(context, "Achievement unlocked:\n${newAchievements.joinToString("\n") { it.title }}", 15f, C_SUCCESS(), true).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, 0, 0, dp(context, 16))
+            })
+        }
         resultCard.addView(primaryButton(context, "Back to Practice") {
             switchTab(TAB_PRACTICE)
         })
@@ -1411,47 +1654,85 @@ class MainActivity : Activity() {
         )
 
         row.addView(statBox(context, doneLessons.toString(), "Lessons done"))
-        row.addView(dividerLine(context))
-        row.addView(statBox(context, totalLessons.toString(), "Total lessons"))
+        row.addView(statBox(context, prefs.getInt("xp_total", 0).toString(), "XP"))
+        row.addView(statBox(context, prefs.getInt("coins_total", 0).toString(), "Coins"))
 
         statsCard.addView(row)
+        statsCard.addView(tv(context, "$doneLessons of $totalLessons lessons complete", 12f, C_MUTED(), false).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(context, 10), 0, 0)
+        })
         content.addView(statsCard)
+
+        val achievementsCard = card(context)
+        achievementsCard.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { setMargins(0, dp(context, 16), 0, 0) }
+        achievementsCard.addView(tv(context, "Achievements", 16f, C_TEXT(), true).apply {
+            setPadding(0, 0, 0, dp(context, 12))
+        })
+        for (achievement in PracticeData.achievements(currentStats())) {
+            val achievementRow = LinearLayout(context)
+            achievementRow.orientation = LinearLayout.HORIZONTAL
+            achievementRow.gravity = Gravity.CENTER_VERTICAL
+            achievementRow.setPadding(0, dp(context, 8), 0, dp(context, 8))
+            val stateColor = if (achievement.unlocked) C_SUCCESS() else C_MUTED()
+            achievementRow.addView(tv(context, if (achievement.unlocked) "✓" else "○", 22f, stateColor, true).apply {
+                layoutParams = ViewGroup.LayoutParams(dp(context, 36), dp(context, 40))
+                gravity = Gravity.CENTER
+            })
+            val textColumn = LinearLayout(context)
+            textColumn.orientation = LinearLayout.VERTICAL
+            textColumn.addView(tv(context, achievement.title, 15f, if (achievement.unlocked) C_TEXT() else C_MUTED(), true))
+            textColumn.addView(tv(context, "${achievement.description} · ${achievement.progress.coerceAtMost(achievement.target)}/${achievement.target}", 12f, C_MUTED(), false))
+            achievementRow.addView(textColumn, wlp(context))
+            achievementsCard.addView(achievementRow)
+        }
+        content.addView(achievementsCard)
 
         // Settings card
         val settingsCard = card(context)
-        settingsCard.layoutParams = ViewGroup.LayoutParams(
+        settingsCard.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        settingsCard.setPadding(0, dp(context, 24), 0, dp(context, 12))
+        ).apply { setMargins(0, dp(context, 16), 0, 0) }
+        settingsCard.setPadding(dp(context, 16), dp(context, 24), dp(context, 16), dp(context, 12))
 
         val sTitle = tv(context, "Settings", 16f, C_TEXT(), true)
         sTitle.setPadding(0, 0, 0, dp(context, 12))
         settingsCard.addView(sTitle)
 
-        // Dark mode toggle
+        // Dark mode switch
         val darkRow = LinearLayout(context)
         darkRow.orientation = LinearLayout.HORIZONTAL
+        darkRow.gravity = Gravity.CENTER_VERTICAL
+        darkRow.minimumHeight = dp(context, 56)
         darkRow.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
         darkRow.setPadding(0, 0, 0, dp(context, 12))
 
-        darkRow.addView(tv(context, "Dark mode", 15f, C_TEXT(), false), wlp(context))
+        val darkLabel = tv(context, "Dark mode", 15f, C_TEXT(), false)
+        darkLabel.gravity = Gravity.CENTER_VERTICAL
+        darkRow.addView(darkLabel, wlp(context))
 
-        val darkToggle = TextView(context)
-        darkToggle.text = if (isDarkMode()) "ON" else "OFF"
-        darkToggle.textSize = 14f
-        darkToggle.setTextColor(if (isDarkMode()) C_SUCCESS() else C_MUTED())
-        darkToggle.setTypeface(darkToggle.typeface, Typeface.BOLD)
-        darkToggle.gravity = Gravity.CENTER
-        darkToggle.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
-        darkToggle.layoutParams = ViewGroup.LayoutParams(dp(context, 60), dp(context, 36))
-        darkToggle.setOnClickListener {
-            setDarkMode(!isDarkMode())
+        val darkSwitch = android.widget.Switch(context)
+        darkSwitch.showText = false
+        darkSwitch.isChecked = isDarkMode()
+        darkSwitch.contentDescription = "Dark mode"
+        darkSwitch.gravity = Gravity.CENTER
+        darkSwitch.layoutParams = ViewGroup.LayoutParams(dp(context, 64), dp(context, 48))
+        val switchStates = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            darkSwitch.thumbTintList = ColorStateList(switchStates, intArrayOf(C_ACCENT(), C_MUTED()))
+            darkSwitch.trackTintList = ColorStateList(switchStates, intArrayOf(C_GOLD(), C_BORDER()))
         }
-        darkRow.addView(darkToggle)
+        darkSwitch.setOnCheckedChangeListener { _, checked ->
+            if (checked != isDarkMode()) setDarkMode(checked)
+        }
+        darkRow.addView(darkSwitch)
 
         settingsCard.addView(darkRow)
         content.addView(settingsCard)
