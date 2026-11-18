@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warm off-white primary background -->
+    <color name="bg_primary">#F8F6F2</color>
+    <!-- White card/surface background -->
+    <color name="bg_surface">#FFFFFF</color>
+    <!-- Near-black primary text -->
+    <color name="text_primary">#171717</color>
+    <!-- Muted gray secondary text -->
+    <color name="text_secondary">#77736E</color>
+    <!-- Vermilion red primary accent -->
+    <color name="accent_primary">#C62828</color>
+    <!-- Muted gold secondary accent -->
+    <color name="accent_gold">#D6A84F</color>
+    <!-- Restrained green success -->
+    <color name="success">#36845B</color>
+    <!-- Subtle warm gray borders -->
+    <color name="border">#E9E5DF</color>
+    <!-- Hanzi: large, dark -->
+    <color name="hanzi">#171717</color>
+    <!-- Pinyin: muted, beneath hanzi -->
+    <color name="pinyin">#77736E</color>
+    <!-- Locked state -->
+    <color name="locked">#C9C4BD</color>
+    <!-- Completed state -->
+    <color name="done_bg">#F1F7EE</color>
+    <color name="done_text">#36845B</color>
+</resources>

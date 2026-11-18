@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_padding">16dp</dimen>
+    <dimen name="section_gap">20dp</dimen>
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="card_elevation">2dp</dimen>
+    <dimen name="border_width">1dp</dimen>
+    <dimen name="icon_size">24dp</dimen>
+    <dimen name="avatar_size">40dp</dimen>
+    <dimen name="nav_height">56dp</dimen>
+    <dimen name="nav_icon_size">20dp</dimen>
+    <dimen name="hanzi_size">64sp</dimen>
+    <dimen name="pinyin_size">18sp</dimen>
+    <dimen name="meaning_size">16sp</dimen>
+    <dimen name="title_size">20sp</dimen>
+    <dimen name="subtitle_size">14sp</dimen>
+    <dimen name="body_size">15sp</dimen>
+    <dimen name="caption_size">12sp</dimen>
+    <dimen name="button_radius">12dp</dimen>
+    <dimen name="progress_height">6dp</dimen>
+</resources>

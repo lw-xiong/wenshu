@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">文 HSK</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_learn">Learn</string>
+    <string name="tab_vocab">Vocabulary</string>
+    <string name="tab_review">Review</string>
+    <string name="tab_profile">Profile</string>
+    <string name="continue_learning">Continue learning</string>
+    <string name="next_lesson">Next lesson</string>
+    <string name="mark_done">Mark lesson done</string>
+    <string name="lesson_complete">Lesson complete</string>
+    <string name="out_of_syllabus">Out of HSK syllabus</string>
+    <string name="reveal">Reveal meaning</string>
+    <string name="known">Known</string>
+    <string name="review_word">Review later</string>
+    <string name="search">Search words</string>
+    <string name="no_results">No words found</string>
+    <string name="words_learned">words learned</string>
+    <string name="lessons_done">lessons done</string>
+    <string name="hsk_level">HSK level</string>
+    <string name="vocab_target">vocab target</string>
+    <string name="locked">Locked</string>
+    <string name="available">Available</string>
+    <string name="completed">Completed</string>
+    <string name="back">Back</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="audio_unavailable">Audio unavailable</string>
+</resources>
