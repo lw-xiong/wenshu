@@ -650,50 +650,54 @@ class MainActivity : Activity() {
         cardStage.addView(meaning)
 
         cardStage.setOnClickListener {
-            cardStage.animate().rotationY(90f).setDuration(200).withEndAction {
-                revealed = !revealed
-                meaning.visibility = if (revealed) View.VISIBLE else View.GONE
-                hint.visibility = if (revealed) View.GONE else View.VISIBLE
-                cardStage.rotationY = 270f
-                cardStage.animate().rotationY(360f).setDuration(200).start()
-            }.start()
+            val anim = android.animation.ObjectAnimator.ofFloat(cardStage, "rotationY", 0f, 180f)
+            anim.duration = 400
+            var swapped = false
+            anim.addUpdateListener { animation ->
+                if (animation.animatedFraction >= 0.5f && !swapped) {
+                    swapped = true
+                    revealed = !revealed
+                    meaning.visibility = if (revealed) View.VISIBLE else View.GONE
+                    hint.visibility = if (revealed) View.GONE else View.VISIBLE
+                }
+            }
+            anim.start()
         }
 
         content.addView(cardStage)
 
-        // Navigation
+        // Navigation — stacked vertically with proper spacing
         val nav = LinearLayout(context)
-        nav.orientation = LinearLayout.HORIZONTAL
+        nav.orientation = LinearLayout.VERTICAL
         nav.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
         nav.setPadding(0, dp(context, 12), 0, 0)
 
-        // Declare both buttons first so listeners can reference each other
         val btnNext = Button(context)
         val btnPrev = TextView(context)
 
-        // Configure Next
-        btnNext.text = "Next"
-        btnNext.textSize = 14f
+        btnNext.text = if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
+        btnNext.textSize = 15f
         btnNext.setTextColor(Color.parseColor("#FFFFFF"))
         btnNext.setBackgroundResource(R.drawable.btn_primary)
-        btnNext.layoutParams = wlp(context)
-        btnNext.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        btnNext.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        btnNext.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         btnNext.isAllCaps = false
-        btnNext.isEnabled = currentIdx < totalWords - 1
-        val nextParams = btnNext.layoutParams as LinearLayout.LayoutParams
-        nextParams.marginStart = dp(context, 8)
-        btnNext.layoutParams = nextParams
 
-        // Configure Previous
         btnPrev.text = "Previous"
         btnPrev.textSize = 14f
         btnPrev.setTextColor(C_ACCENT)
         btnPrev.setBackgroundResource(R.drawable.btn_ghost)
-        btnPrev.layoutParams = wlp(context)
-        btnPrev.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        btnPrev.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        btnPrev.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
         btnPrev.gravity = Gravity.CENTER
         btnPrev.isEnabled = currentIdx > 0
 
@@ -708,34 +712,58 @@ class MainActivity : Activity() {
             pinyin.text = lesson.words[currentIdx].pinyin
             meaning.text = lesson.words[currentIdx].meaning
             updateNavButtons(btnPrev, btnNext, currentIdx, totalWords)
+            btnNext.text = if (currentIdx >= totalWords - 1) "Next lesson" else "Next"
         }
 
-        btnNext.setOnClickListener { goTo((currentIdx + 1) % totalWords) }
+        btnNext.setOnClickListener {
+            if (currentIdx >= totalWords - 1) {
+                // At last word: mark done and go to next lesson
+                prefs.edit().putBoolean("done:${lesson.id}", true).apply()
+                prefs.edit().putInt(progressKey, totalWords).apply()
+                val nextIdx = lessonIndex + 1
+                if (nextIdx < mod.lessons.size) {
+                    openLesson(mod.level, nextIdx)
+                } else {
+                    Toast.makeText(context, "All lessons complete", Toast.LENGTH_SHORT).show()
+                    switchTab(TAB_LEARN)
+                }
+            } else {
+                goTo((currentIdx + 1) % totalWords)
+            }
+        }
         btnPrev.setOnClickListener { goTo((currentIdx - 1 + totalWords) % totalWords) }
 
         nav.addView(btnNext)
+
+        val spacer = View(context)
+        spacer.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(context, 10)
+        )
+        nav.addView(spacer)
+
         nav.addView(btnPrev)
 
-        content.addView(nav)
-
-        val btnDone = Button(context)
-        btnDone.text = "Mark lesson done"
-        btnDone.textSize = 14f
-        btnDone.setTextColor(Color.parseColor("#FFFFFF"))
-        btnDone.setBackgroundResource(if (currentIdx >= totalWords - 1) R.drawable.btn_success else R.drawable.btn_primary)
-        btnDone.layoutParams = ViewGroup.LayoutParams(
+        // Shuffle button
+        val btnShuffle = TextView(context)
+        btnShuffle.text = "Shuffle"
+        btnShuffle.textSize = 14f
+        btnShuffle.setTextColor(C_ACCENT)
+        btnShuffle.setBackgroundResource(R.drawable.btn_ghost)
+        btnShuffle.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        btnDone.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
-        btnDone.isAllCaps = false
-        btnDone.setOnClickListener {
-            prefs.edit().putBoolean("done:${lesson.id}", true).apply()
-            prefs.edit().putInt(progressKey, totalWords).apply()
-            Toast.makeText(context, "Lesson complete", Toast.LENGTH_SHORT).show()
-            switchTab(TAB_LEARN)
+        btnShuffle.setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
+        btnShuffle.gravity = Gravity.CENTER
+        btnShuffle.setOnClickListener {
+            lesson.words = lesson.words.shuffled()
+            goTo(0)
+            Toast.makeText(context, "Words shuffled", Toast.LENGTH_SHORT).show()
         }
-        content.addView(btnDone)
+        nav.addView(btnShuffle)
+
+        content.addView(nav)
 
         scroll.addView(content)
         root.addView(scroll)

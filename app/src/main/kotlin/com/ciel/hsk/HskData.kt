@@ -12,7 +12,7 @@ data class HskLesson(
     val id: String,
     val title: String,
     val sub: String,
-    val words: List<HskWord>
+    var words: List<HskWord>
 )
 
 data class HskModule(
