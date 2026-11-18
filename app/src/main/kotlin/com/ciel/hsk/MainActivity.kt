@@ -684,17 +684,29 @@ class MainActivity : Activity() {
         cardStage.addView(meaning)
 
         cardStage.setOnClickListener {
-            // Two-phase flip: front 0→90, back 270→360
-            hanzi.animate().rotationY(90f).setDuration(200).withEndAction {
-                hanzi.visibility = View.GONE
-                pinyin.visibility = View.GONE
-                hint.visibility = View.GONE
-
-                // Back side: start at 270° (edge-on from other side)
-                meaning.rotationY = 270f
-                meaning.visibility = View.VISIBLE
-                meaning.animate().rotationY(360f).setDuration(200).start()
-            }.start()
+            if (!revealed) {
+                // Show meaning: hide hanzi, show meaning
+                hanzi.animate().rotationY(90f).setDuration(200).withEndAction {
+                    hanzi.visibility = View.GONE
+                    pinyin.visibility = View.GONE
+                    hint.visibility = View.GONE
+                    meaning.rotationY = 270f
+                    meaning.visibility = View.VISIBLE
+                    meaning.animate().rotationY(360f).setDuration(200).start()
+                }.start()
+                revealed = true
+            } else {
+                // Show hanzi: hide meaning, show hanzi
+                meaning.animate().rotationY(90f).setDuration(200).withEndAction {
+                    meaning.visibility = View.GONE
+                    hanzi.rotationY = 270f
+                    hanzi.visibility = View.VISIBLE
+                    pinyin.visibility = View.VISIBLE
+                    hint.visibility = View.VISIBLE
+                    hanzi.animate().rotationY(360f).setDuration(200).start()
+                }.start()
+                revealed = false
+            }
         }
 
         content.addView(cardStage)
@@ -1062,7 +1074,7 @@ class MainActivity : Activity() {
         content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
 
         val avatar = TextView(context)
-        avatar.text = "文"
+        avatar.text = "问"
         avatar.textSize = 32f
         avatar.setTypeface(avatar.typeface, Typeface.BOLD)
         avatar.setTextColor(Color.parseColor("#0A0A0A"))
