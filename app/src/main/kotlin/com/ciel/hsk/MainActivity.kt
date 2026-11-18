@@ -607,15 +607,8 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, dp(context, 16))
         })
 
-        if (selectedLevel > 2) {
-            content.addView(tv(context, "Coming soon", 20f, C_ACCENT(), true).apply {
-                setPadding(0, dp(context, 40), 0, 0)
-                gravity = Gravity.CENTER
-            })
-        } else {
-            for ((index, lesson) in mod.lessons.withIndex()) {
-                content.addView(lessonCard(context, mod, index + 1, lesson))
-            }
+        for ((index, lesson) in mod.lessons.withIndex()) {
+            content.addView(lessonCard(context, mod, index + 1, lesson))
         }
 
         content.addView(View(context).apply {
