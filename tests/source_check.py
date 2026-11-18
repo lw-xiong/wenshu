@@ -28,7 +28,9 @@ for mode in ("easy", "medium", "hard", "hsk", "match_words", "match_sentences"):
 
 assert 'private fun openMatchingPractice(mode: String)' in text
 assert 'private fun openPracticeQuiz(mode: String, questions: List<PracticeQuestion>)' in text
-assert 'PracticeData.generate(difficulty, source.shuffled())' in text
+assert 'PracticeData.generate(difficulty, source, exclude = recent)' in text
+assert 'recent_question_queue' in text
+assert 'rememberQuestions(questions)' in text
 assert 'PracticeData.achievements(currentStats())' in text
 assert 'coins_total' in text and 'practice_correct_total' in text and 'perfect_sessions' in text
 
@@ -36,7 +38,16 @@ assert 'HSK("HSK Reading", 25, 30)' in practice
 assert 'QuestionType.LISTENING' in practice
 assert 'QuestionType.FILL_BLANK' in practice
 assert 'QuestionType.SENTENCE_ORDER' in practice
+assert 'QuestionType.SENTENCE_TRANSLATION' in practice
+assert 'QuestionType.SENTENCE_LISTENING' in practice
+assert 'Random.Default' in practice
+assert 'requiredTokens' in practice
 assert 'fun rewards(mode: String, score: Int, total: Int)' in practice
+assert 'private fun openWritingPractice()' in text
+assert 'WritingPadView(context)' in text
+assert 'Alibaba-PuHuiTi-Heavy.ttf' in text
+assert (root / 'app/src/main/assets/fonts/Alibaba-PuHuiTi-Heavy.ttf').is_file()
+assert (root / 'app/src/main/kotlin/com/ciel/hsk/WritingEvaluator.kt').is_file()
 
 assert 'bar.weightSum = tabLabels.size.toFloat()' in text
 assert 'icon.textAlignment = View.TEXT_ALIGNMENT_CENTER' in text

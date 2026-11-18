@@ -293,6 +293,23 @@ class MainActivity : Activity() {
         )
     }
 
+    private fun recentQuestionSignatures(): List<String> {
+        return try {
+            val array = org.json.JSONArray(prefs.getString("recent_question_queue", "[]"))
+            List(array.length()) { array.getString(it) }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun rememberQuestions(questions: List<PracticeQuestion>) {
+        val combined = recentQuestionSignatures() + questions.map { PracticeData.signature(it) }
+        val start = (combined.size - 200).coerceAtLeast(0)
+        val array = org.json.JSONArray()
+        for (i in start until combined.size) array.put(combined[i])
+        prefs.edit().putString("recent_question_queue", array.toString()).apply()
+    }
+
     private fun wlp(context: Context): LinearLayout.LayoutParams {
         val p = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
         p.weight = 1f
@@ -526,15 +543,9 @@ class MainActivity : Activity() {
 
         card.addView(progressBar(context, if (total > 0) (done * 100 / total) else 0))
 
-        if (mod.level > 2) {
-            card.addView(tv(context, "Coming soon", 12f, C_MUTED(), false).apply {
-                setPadding(0, dp(context, 6), 0, 0)
-            })
-        } else {
-            card.setOnClickListener {
-                prefs.edit().putInt("selected_hsk", mod.level).apply()
-                switchTab(TAB_LEARN)
-            }
+        card.setOnClickListener {
+            prefs.edit().putInt("selected_hsk", mod.level).apply()
+            switchTab(TAB_LEARN)
         }
 
         return card
@@ -1095,7 +1106,8 @@ class MainActivity : Activity() {
             Triple("Hard", "20 questions · sentences and listening · 30 XP", "hard"),
             Triple("HSK Reading", "25 questions · official reading length · 30 XP", "hsk"),
             Triple("Match words", "5 boards · 20 vocabulary pairs · 15 XP", "match_words"),
-            Triple("Match sentences", "3 boards · 12 textbook sentence pairs · 20 XP", "match_sentences")
+            Triple("Match sentences", "3 boards · 12 textbook sentence pairs · 20 XP", "match_sentences"),
+            Triple("Hanzi writing", "10 characters · guided finger tracing · 20 XP", "writing")
         )
 
         for ((title, subtitle, mode) in options) {
@@ -1126,6 +1138,10 @@ class MainActivity : Activity() {
     }
 
     private fun startPracticeSession(context: Context, mode: String) {
+        if (mode == "writing") {
+            openWritingPractice()
+            return
+        }
         if (mode.startsWith("match_")) {
             openMatchingPractice(mode)
             return
@@ -1147,7 +1163,9 @@ class MainActivity : Activity() {
             Toast.makeText(context, "At least four practice words are needed", Toast.LENGTH_SHORT).show()
             return
         }
-        val questions = PracticeData.generate(difficulty, source.shuffled())
+        val recent = recentQuestionSignatures().toSet()
+        val questions = PracticeData.generate(difficulty, source, exclude = recent)
+        rememberQuestions(questions)
         openPracticeQuiz(mode, questions)
     }
 
@@ -1275,8 +1293,8 @@ class MainActivity : Activity() {
             progress.progress = index * 100 / questions.size
             prompt.text = question.prompt
             prompt.textSize = when (question.type) {
-                QuestionType.HANZI, QuestionType.FILL_BLANK, QuestionType.SENTENCE_ORDER, QuestionType.TRUE_FALSE -> 24f
-                QuestionType.LISTENING -> 20f
+                QuestionType.HANZI, QuestionType.FILL_BLANK, QuestionType.SENTENCE_ORDER, QuestionType.TRUE_FALSE, QuestionType.SENTENCE_TRANSLATION -> 24f
+                QuestionType.LISTENING, QuestionType.SENTENCE_LISTENING -> 20f
                 else -> 42f
             }
             instruction.text = question.instruction
@@ -1300,7 +1318,7 @@ class MainActivity : Activity() {
                         tokenAnswer.text = built.joinToString("")
                         tokenBtn.isEnabled = false
                         tokenBtn.alpha = 0.35f
-                        checkBtn.isEnabled = built.size == question.tokens.size
+                        checkBtn.isEnabled = built.size == question.requiredTokens
                     }
                     optionsBox.addView(tokenBtn)
                 }
@@ -1319,6 +1337,7 @@ class MainActivity : Activity() {
                         QuestionType.HANZI -> 28f
                         QuestionType.FILL_BLANK -> 22f
                         QuestionType.TRUE_FALSE -> 18f
+                        QuestionType.SENTENCE_TRANSLATION, QuestionType.SENTENCE_LISTENING -> 14f
                         else -> 16f
                     }
                     optionBtn.setTextColor(C_TEXT())
@@ -1530,6 +1549,151 @@ class MainActivity : Activity() {
         renderBoard()
     }
 
+    private fun openWritingPractice() {
+        val words = HskData.allWords().filter { it.hskLevel <= 2 && it.hanzi.length == 1 }
+            .distinctBy { it.hanzi }.shuffled().take(10)
+        if (words.isEmpty()) return
+        currentTab = -1
+        container.removeAllViews()
+        val context = this
+
+        val root = LinearLayout(context)
+        root.orientation = LinearLayout.VERTICAL
+        root.setBackgroundColor(C_BG())
+        val scroll = ScrollView(context)
+        val content = LinearLayout(context)
+        content.orientation = LinearLayout.VERTICAL
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 24))
+
+        val top = LinearLayout(context)
+        top.orientation = LinearLayout.HORIZONTAL
+        top.gravity = Gravity.CENTER_VERTICAL
+        top.addView(backButton(context) { switchTab(TAB_PRACTICE) })
+        top.addView(tv(context, "Hanzi Writing", 20f, C_TEXT(), true).apply {
+            setPadding(dp(context, 10), 0, 0, 0)
+        })
+        content.addView(top)
+
+        val counter = tv(context, "", 12f, C_MUTED(), true)
+        counter.setPadding(0, dp(context, 16), 0, dp(context, 6))
+        content.addView(counter)
+        val progress = progressBar(context, 0)
+        content.addView(progress)
+        content.addView(tv(context, "Trace with your finger. Guide coverage and stray ink are scored.", 14f, C_MUTED(), false).apply {
+            setPadding(0, dp(context, 12), 0, dp(context, 8))
+        })
+
+        val wordLabel = tv(context, "", 20f, C_TEXT(), true)
+        wordLabel.gravity = Gravity.CENTER
+        content.addView(wordLabel)
+        val audioBtn = TextView(context)
+        audioBtn.text = "🔊 Play"
+        audioBtn.textSize = 14f
+        audioBtn.setTextColor(C_ACCENT())
+        audioBtn.gravity = Gravity.CENTER
+        audioBtn.setPadding(dp(context, 8), dp(context, 8), dp(context, 8), dp(context, 8))
+        content.addView(audioBtn)
+
+        val pad = WritingPadView(context)
+        pad.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+        content.addView(pad)
+
+        val feedback = tv(context, "", 15f, C_TEXT(), true)
+        feedback.gravity = Gravity.CENTER
+        feedback.setPadding(0, dp(context, 12), 0, dp(context, 12))
+        content.addView(feedback)
+
+        val controls = LinearLayout(context)
+        controls.orientation = LinearLayout.HORIZONTAL
+        val guideBtn = Button(context)
+        val undoBtn = Button(context)
+        val clearBtn = Button(context)
+        val controlButtons = listOf(guideBtn, undoBtn, clearBtn)
+        for ((index, button) in controlButtons.withIndex()) {
+            button.text = listOf("Hide guide", "Undo", "Clear")[index]
+            button.textSize = 14f
+            button.setTextColor(C_ACCENT())
+            button.background = roundedBg(context, C_CARD(), C_BORDER(), 12)
+            button.isAllCaps = false
+            button.layoutParams = LinearLayout.LayoutParams(0, dp(context, 52), 1f).apply {
+                setMargins(dp(context, 4), 0, dp(context, 4), 0)
+            }
+            controls.addView(button)
+        }
+        content.addView(controls)
+
+        var index = 0
+        var score = 0
+        var checked = false
+        var guideVisible = true
+        lateinit var renderCharacter: () -> Unit
+        val checkBtn = primaryButton(context, "Check trace") {}
+
+        audioBtn.setOnClickListener {
+            if (::tts.isInitialized) {
+                tts.speak(words[index].hanzi, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
+        guideBtn.setOnClickListener {
+            guideVisible = !guideVisible
+            pad.setGuideVisible(guideVisible)
+            guideBtn.text = if (guideVisible) "Hide guide" else "Show guide"
+        }
+        undoBtn.setOnClickListener { pad.undo() }
+        clearBtn.setOnClickListener { pad.clear() }
+
+        checkBtn.setOnClickListener {
+            if (!checked) {
+                val trace = pad.traceScore()
+                val passed = trace >= WritingEvaluator.PASS_SCORE
+                if (passed) score++
+                feedback.text = if (passed) {
+                    "Good trace · $trace%"
+                } else {
+                    "Keep practicing · $trace% · need ${WritingEvaluator.PASS_SCORE}%"
+                }
+                feedback.setTextColor(if (passed) C_SUCCESS() else C_ACCENT())
+                val key = words[index].hanzi
+                val mistakes = prefs.getStringSet("review_words", emptySet())?.toMutableSet() ?: mutableSetOf()
+                if (passed) mistakes.remove(key) else mistakes.add(key)
+                prefs.edit().putStringSet("review_words", mistakes).apply()
+                checked = true
+                pad.isEnabled = false
+                undoBtn.isEnabled = false
+                clearBtn.isEnabled = false
+                checkBtn.text = if (index == words.lastIndex) "See results" else "Next character"
+            } else if (index == words.lastIndex) {
+                showPracticeResults("writing", score, words.size)
+            } else {
+                index++
+                renderCharacter()
+            }
+        }
+
+        renderCharacter = {
+            checked = false
+            guideVisible = true
+            pad.isEnabled = true
+            undoBtn.isEnabled = true
+            clearBtn.isEnabled = true
+            pad.setCharacter(words[index].hanzi)
+            pad.setGuideVisible(true)
+            pad.contentDescription = "Trace ${words[index].hanzi}"
+            guideBtn.text = "Hide guide"
+            wordLabel.text = "${words[index].pinyin} · ${words[index].meaning}"
+            counter.text = "CHARACTER ${index + 1} OF ${words.size}"
+            progress.progress = index * 100 / words.size
+            feedback.text = ""
+            checkBtn.text = "Check trace"
+        }
+
+        content.addView(checkBtn)
+        scroll.addView(content)
+        root.addView(scroll)
+        container.addView(root)
+        renderCharacter()
+    }
+
     private fun showPracticeResults(mode: String, score: Int, total: Int) {
         val previouslyUnlocked = PracticeData.achievements(currentStats()).filter { it.unlocked }.map { it.id }.toSet()
         val (earned, coinsEarned) = PracticeData.rewards(mode, score, total)
@@ -1635,7 +1799,7 @@ class MainActivity : Activity() {
         val avatar = TextView(context)
         avatar.text = "问书"
         avatar.textSize = 28f
-        avatar.setTypeface(avatar.typeface, Typeface.BOLD)
+        avatar.typeface = Typeface.createFromAsset(context.assets, "fonts/Alibaba-PuHuiTi-Heavy.ttf")
         avatar.setTextColor(Color.WHITE)
         avatar.background = roundedBg(context, C_ACCENT(), C_ACCENT(), 12)
         avatar.layoutParams = ViewGroup.LayoutParams(dp(context, 96), dp(context, 64))
