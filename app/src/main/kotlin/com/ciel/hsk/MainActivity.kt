@@ -228,6 +228,11 @@ class MainActivity : Activity() {
         return b
     }
 
+    private fun updateNavButtons(btnPrev: TextView, btnNext: Button, currentIdx: Int, totalWords: Int) {
+        btnPrev.isEnabled = currentIdx > 0
+        btnNext.isEnabled = currentIdx < totalWords - 1
+    }
+
     /* ========================================================================
        HOME SCREEN — dashboard
        ======================================================================== */
@@ -406,9 +411,15 @@ class MainActivity : Activity() {
 
         card.addView(progressBar(context, if (total > 0) (done * 100 / total) else 0))
 
-        card.setOnClickListener {
-            prefs.edit().putInt("selected_hsk", mod.level).apply()
-            switchTab(TAB_LEARN)
+        if (mod.level > 2) {
+            card.addView(tv(context, "Coming soon", 12f, C_MUTED, false).apply {
+                setPadding(0, dp(context, 6), 0, 0)
+            })
+        } else {
+            card.setOnClickListener {
+                prefs.edit().putInt("selected_hsk", mod.level).apply()
+                switchTab(TAB_LEARN)
+            }
         }
 
         return card
@@ -470,8 +481,15 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, dp(context, 16))
         })
 
-        for ((index, lesson) in mod.lessons.withIndex()) {
-            content.addView(lessonCard(context, mod, index + 1, lesson))
+        if (selectedLevel > 2) {
+            content.addView(tv(context, "Coming soon", 20f, C_ACCENT, true).apply {
+                setPadding(0, dp(context, 40), 0, 0)
+                gravity = Gravity.CENTER
+            })
+        } else {
+            for ((index, lesson) in mod.lessons.withIndex()) {
+                content.addView(lessonCard(context, mod, index + 1, lesson))
+            }
         }
 
         content.addView(View(context).apply {
@@ -531,6 +549,7 @@ class MainActivity : Activity() {
        ======================================================================== */
 
     private fun openLesson(hskLevel: Int, lessonIndex: Int) {
+        currentTab = -1 // Sentinel: allow back to Learn
         val mod = HskData.modules().first { it.level == hskLevel }
         val lesson = mod.lessons[lessonIndex]
         container.removeAllViews()
@@ -585,7 +604,7 @@ class MainActivity : Activity() {
         // Progress
         val totalWords = lesson.words.size
         val progressKey = "card_progress:${lesson.id}"
-        var currentIdx = prefs.getInt(progressKey, 0)
+        var currentIdx = prefs.getInt(progressKey, 0).coerceIn(0, totalWords - 1)
         var revealed = false
 
         content.addView(tv(context, "Progress", 11f, C_MUTED, true).apply {
@@ -631,9 +650,13 @@ class MainActivity : Activity() {
         cardStage.addView(meaning)
 
         cardStage.setOnClickListener {
-            revealed = !revealed
-            meaning.visibility = if (revealed) View.VISIBLE else View.GONE
-            hint.visibility = if (revealed) View.GONE else View.VISIBLE
+            cardStage.animate().rotationY(90f).setDuration(200).withEndAction {
+                revealed = !revealed
+                meaning.visibility = if (revealed) View.VISIBLE else View.GONE
+                hint.visibility = if (revealed) View.GONE else View.VISIBLE
+                cardStage.rotationY = 270f
+                cardStage.animate().rotationY(360f).setDuration(200).start()
+            }.start()
         }
 
         content.addView(cardStage)
@@ -647,28 +670,11 @@ class MainActivity : Activity() {
         )
         nav.setPadding(0, dp(context, 12), 0, 0)
 
-        val btnPrev = TextView(context)
-        btnPrev.text = "Previous"
-        btnPrev.textSize = 14f
-        btnPrev.setTextColor(C_ACCENT)
-        btnPrev.setBackgroundResource(R.drawable.btn_ghost)
-        btnPrev.layoutParams = wlp(context)
-        btnPrev.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
-        btnPrev.gravity = Gravity.CENTER
-        btnPrev.isEnabled = currentIdx > 0
-        btnPrev.setOnClickListener {
-            revealed = false
-            meaning.visibility = View.GONE
-            hint.visibility = View.VISIBLE
-            currentIdx = (currentIdx - 1 + totalWords) % totalWords
-            prefs.edit().putInt(progressKey, currentIdx).apply()
-            hanzi.text = lesson.words[currentIdx].hanzi
-            pinyin.text = lesson.words[currentIdx].pinyin
-            meaning.text = lesson.words[currentIdx].meaning
-        }
-        nav.addView(btnPrev)
-
+        // Declare both buttons first so listeners can reference each other
         val btnNext = Button(context)
+        val btnPrev = TextView(context)
+
+        // Configure Next
         btnNext.text = "Next"
         btnNext.textSize = 14f
         btnNext.setTextColor(Color.parseColor("#FFFFFF"))
@@ -677,17 +683,38 @@ class MainActivity : Activity() {
         btnNext.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
         btnNext.isAllCaps = false
         btnNext.isEnabled = currentIdx < totalWords - 1
-        btnNext.setOnClickListener {
+        val nextParams = btnNext.layoutParams as LinearLayout.LayoutParams
+        nextParams.marginStart = dp(context, 8)
+        btnNext.layoutParams = nextParams
+
+        // Configure Previous
+        btnPrev.text = "Previous"
+        btnPrev.textSize = 14f
+        btnPrev.setTextColor(C_ACCENT)
+        btnPrev.setBackgroundResource(R.drawable.btn_ghost)
+        btnPrev.layoutParams = wlp(context)
+        btnPrev.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12))
+        btnPrev.gravity = Gravity.CENTER
+        btnPrev.isEnabled = currentIdx > 0
+
+        // Shared navigation logic
+        fun goTo(index: Int) {
             revealed = false
             meaning.visibility = View.GONE
             hint.visibility = View.VISIBLE
-            currentIdx = (currentIdx + 1) % totalWords
+            currentIdx = index
             prefs.edit().putInt(progressKey, currentIdx).apply()
             hanzi.text = lesson.words[currentIdx].hanzi
             pinyin.text = lesson.words[currentIdx].pinyin
             meaning.text = lesson.words[currentIdx].meaning
+            updateNavButtons(btnPrev, btnNext, currentIdx, totalWords)
         }
+
+        btnNext.setOnClickListener { goTo((currentIdx + 1) % totalWords) }
+        btnPrev.setOnClickListener { goTo((currentIdx - 1 + totalWords) % totalWords) }
+
         nav.addView(btnNext)
+        nav.addView(btnPrev)
 
         content.addView(nav)
 
