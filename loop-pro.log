@@ -7,6 +7,7 @@ Iteration 5 — COMPLETE (CRITICAL BUG FIXES: back button, prev button, finished
   flip animation, button spacing, HSK 3/4/5 coming soon)
 Iteration 6 — COMPLETE (UX POLISH: vertical button spacing, smooth flip, shuffle, next lesson)
 Iteration 7 — COMPLETE (CRITICAL FIXES: next lesson button enabled, flip mirror fixed)
+Iteration 8 — COMPLETE (FEATURE: TTS audio pronunciation + memory cleanup)
 
 Acceptance criteria:
 1. Real Android APK (Kotlin), not a PWA — PASS (build/hsk-app.apk)
@@ -79,7 +80,12 @@ Critical fixes (Iteration 7):
 - Flip mirror: scaleX 1→-1→1 instead of rotationY (was mirroring hanzi/pinyin/meaning)
 - Pinyin: verified data is correct (caron diacritics may not render on device font, not corruption)
 
-Fixes applied during build (Iteration 0-7):
+Feature additions (Iteration 8):
+- TTS audio: Android TextToSpeech for Chinese pronunciation (Locale.CHINESE)
+- Audio button: "🔊 Play" on each flashcard, speaks the hanzi
+- Memory cleanup: onDestroy stops and shuts down TTS
+
+Fixes applied during build (Iteration 0-8):
 - aapt2 compile/link: pass individual files, not directories
 - activity_card/lesson/main.xml: removed (replaced by programmatic views)
 - ic_launcher_circle.xml: encoding="utf-8"

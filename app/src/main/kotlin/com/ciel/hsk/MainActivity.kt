@@ -27,6 +27,7 @@ class MainActivity : Activity() {
     private lateinit var container: FrameLayout
     private lateinit var navBar: LinearLayout
     private var currentTab: Int = -1
+    private lateinit var tts: android.speech.tts.TextToSpeech
 
     private val TAB_HOME = 0
     private val TAB_LEARN = 1
@@ -75,7 +76,24 @@ class MainActivity : Activity() {
 
         setContentView(root)
 
+        tts = android.speech.tts.TextToSpeech(this) { status ->
+            if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                val result = tts.setLanguage(java.util.Locale.CHINESE)
+                if (result == android.speech.tts.TextToSpeech.LANG_MISSING_DATA || result == android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Toast.makeText(this, "Chinese TTS not available", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
         switchTab(TAB_HOME)
+    }
+
+    override fun onDestroy() {
+        if (::tts.isInitialized) {
+            tts.stop()
+            tts.shutdown()
+        }
+        super.onDestroy()
     }
 
     private fun dp(context: Context, d: Int): Int {
@@ -626,6 +644,22 @@ class MainActivity : Activity() {
         val hanzi = tv(context, lesson.words[currentIdx].hanzi, 64f, C_HANZI, true)
         hanzi.gravity = Gravity.CENTER
         cardStage.addView(hanzi)
+
+        // Audio pronunciation button
+        val audioBtn = TextView(context)
+        audioBtn.text = "🔊 Play"
+        audioBtn.textSize = 14f
+        audioBtn.setTextColor(C_ACCENT)
+        audioBtn.gravity = Gravity.CENTER
+        audioBtn.setPadding(dp(context, 8), dp(context, 6), dp(context, 8), dp(context, 6))
+        audioBtn.setOnClickListener {
+            if (::tts.isInitialized) {
+                tts.speak(lesson.words[currentIdx].hanzi, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+            } else {
+                Toast.makeText(context, "Audio unavailable", Toast.LENGTH_SHORT).show()
+            }
+        }
+        cardStage.addView(audioBtn)
 
         val pinyin = tv(context, lesson.words[currentIdx].pinyin, 18f, C_PINYIN, false)
         pinyin.gravity = Gravity.CENTER
