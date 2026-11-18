@@ -8,6 +8,7 @@ Iteration 5 — COMPLETE (CRITICAL BUG FIXES: back button, prev button, finished
 Iteration 6 — COMPLETE (UX POLISH: vertical button spacing, smooth flip, shuffle, next lesson)
 Iteration 7 — COMPLETE (CRITICAL FIXES: next lesson button enabled, flip mirror fixed)
 Iteration 8 — COMPLETE (FEATURE: TTS audio pronunciation + memory cleanup)
+Iteration 9 — COMPLETE (FLIP FIX: proper two-phase flip matching HTML version)
 
 Acceptance criteria:
 1. Real Android APK (Kotlin), not a PWA — PASS (build/hsk-app.apk)
@@ -85,7 +86,12 @@ Feature additions (Iteration 8):
 - Audio button: "🔊 Play" on each flashcard, speaks the hanzi
 - Memory cleanup: onDestroy stops and shuts down TTS
 
-Fixes applied during build (Iteration 0-8):
+Flip animation fix (Iteration 9):
+- Two-phase flip: front 0→90 (hide), back 270→360 (show), matching HTML CSS preserve-3d
+- No mirroring: back starts at 270° (edge-on from other side), rotates to 360° (normal)
+- No mid-animation glitch: proper two-phase with visibility swap at 90°
+
+Fixes applied during build (Iteration 0-9):
 - aapt2 compile/link: pass individual files, not directories
 - activity_card/lesson/main.xml: removed (replaced by programmatic views)
 - ic_launcher_circle.xml: encoding="utf-8"

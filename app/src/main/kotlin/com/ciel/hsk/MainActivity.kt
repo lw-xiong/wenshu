@@ -684,23 +684,17 @@ class MainActivity : Activity() {
         cardStage.addView(meaning)
 
         cardStage.setOnClickListener {
-            val anim = android.animation.ObjectAnimator.ofFloat(cardStage, "scaleX", 1f, -1f)
-            anim.duration = 400
-            var swapped = false
-            anim.addUpdateListener { animation ->
-                if (animation.animatedFraction >= 0.5f && !swapped) {
-                    swapped = true
-                    revealed = !revealed
-                    meaning.visibility = if (revealed) View.VISIBLE else View.GONE
-                    hint.visibility = if (revealed) View.GONE else View.VISIBLE
-                }
-            }
-            anim.addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    cardStage.scaleX = 1f
-                }
-            })
-            anim.start()
+            // Two-phase flip: front 0→90, back 270→360
+            hanzi.animate().rotationY(90f).setDuration(200).withEndAction {
+                hanzi.visibility = View.GONE
+                pinyin.visibility = View.GONE
+                hint.visibility = View.GONE
+
+                // Back side: start at 270° (edge-on from other side)
+                meaning.rotationY = 270f
+                meaning.visibility = View.VISIBLE
+                meaning.animate().rotationY(360f).setDuration(200).start()
+            }.start()
         }
 
         content.addView(cardStage)
