@@ -46,10 +46,15 @@ CLASS_FILES=$(find build/classes_kotlin build/classes_java -name "*.class")
 echo "=== Step 6: package ==="
 cp build/app_linked.apk build/app_unsigned.apk
 python3 -c "
-import zipfile
+import zipfile, os
 with zipfile.ZipFile('build/app_unsigned.apk', 'a') as z:
     z.write('build/dex/classes.dex', 'classes.dex')
-print('classes.dex added')
+    for root, dirs, files in os.walk('app/src/main/assets'):
+        for f in files:
+            full = os.path.join(root, f)
+            arc = os.path.relpath(full, 'app/src/main/assets')
+            z.write(full, arc)
+print('classes.dex + assets added')
 "
 
 echo "=== Step 7: sign ==="
