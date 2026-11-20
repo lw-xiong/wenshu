@@ -3,6 +3,7 @@ import com.ciel.hsk.PlayerStats
 import com.ciel.hsk.PracticeData
 import com.ciel.hsk.PracticeDifficulty
 import com.ciel.hsk.QuestionType
+import com.ciel.hsk.Srs
 import com.ciel.hsk.WritingEvaluator
 import kotlin.random.Random
 
@@ -93,6 +94,17 @@ fun main() {
     check(WritingEvaluator.traceScore(target, shifted, 5, 5, tolerance = 1) >= 90)
     check(words.count { it.hanzi.length == 1 } >= 10)
 
+    // SRS (Leitner) scheduling: box advances, caps at top, intervals strictly grow
+    check(Srs.nextBox(0) == 1)
+    check(Srs.nextBox(1) == 2)
+    check(Srs.nextBox(Srs.INTERVALS_MIN.size) == Srs.INTERVALS_MIN.size) { "box must cap at top interval" }
+    check(Srs.dueMillis(1_000L, 1) == 1_000L + 10 * 60_000L)
+    check(Srs.dueMillis(0L, 3) == 1440 * 60_000L)
+    check(Srs.isDue(Srs.dueMillis(1000L, 1), 1000L + 10 * 60_000L))
+    check(!Srs.isDue(Srs.dueMillis(1000L, 1), 1000L))
+    check(!Srs.isDue(Srs.dueMillis(1000L, 6), 1000L))
+    check(Srs.INTERVALS_MIN.toList().zipWithNext().all { (a, b) -> a < b }) { "intervals must strictly increase" }
+
     println("Word counts: ${HskData.allWords().groupingBy { it.hskLevel }.eachCount()}")
-    println("PASS: unique sessions; nine question formats; 25 sentences; writing scores; matching; rewards")
+    println("PASS: unique sessions; nine question formats; 25 sentences; writing scores; matching; rewards; srs")
 }

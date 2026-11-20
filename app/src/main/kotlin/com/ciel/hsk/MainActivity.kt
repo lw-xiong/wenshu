@@ -307,6 +307,197 @@ class MainActivity : Activity() {
         container.addView(buildLessonScreen(this, mod, lessonIndex, lesson))
     }
 
+    /* ========================================================================
+       SRS — spaced repetition (Leitner). Words reviewed in a lesson resurface
+       later on the Home "Review due" card. Stored as one JSON object under
+       "srs_all": { hanzi: {box, due} }. Scheduling math lives in Srs.kt.
+       ======================================================================== */
+
+    private fun srsMap(): org.json.JSONObject {
+        return try {
+            org.json.JSONObject(prefs.getString("srs_all", "{}"))
+        } catch (_: Exception) {
+            org.json.JSONObject()
+        }
+    }
+
+    private fun recordReview(hanzi: String) {
+        val now = System.currentTimeMillis()
+        val map = srsMap()
+        val oldBox = if (map.has(hanzi)) map.getJSONObject(hanzi).optInt("box", 0) else 0
+        val box = Srs.nextBox(oldBox)
+        val entry = org.json.JSONObject()
+            .put("box", box)
+            .put("due", Srs.dueMillis(now, box))
+        map.put(hanzi, entry)
+        prefs.edit().putString("srs_all", map.toString()).apply()
+    }
+
+    private fun dueEntries(): List<Pair<HskData.WordEntry, Long>> {
+        val now = System.currentTimeMillis()
+        val map = srsMap()
+        val byHanzi = HskData.allWords().associateBy { it.hanzi }
+        val out = mutableListOf<Pair<HskData.WordEntry, Long>>()
+        val keys = map.keys()
+        while (keys.hasNext()) {
+            val h = keys.next()
+            val e = map.getJSONObject(h)
+            val due = e.optLong("due", Long.MAX_VALUE)
+            if (Srs.isDue(due, now)) {
+                byHanzi[h]?.let { out.add(it to due) }
+            }
+        }
+        return out.sortedBy { it.second }
+    }
+
+    private fun dueCount(): Int = dueEntries().size
+
+    private fun openReview() {
+        currentTab = -1 // sentinel: back from review returns to Home
+        container.removeAllViews()
+        container.addView(buildReviewScreen(this))
+    }
+
+    private fun buildReviewScreen(context: Context): View {
+        val root = LinearLayout(context)
+        root.orientation = LinearLayout.VERTICAL
+        root.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        root.setBackgroundColor(C_BG())
+
+        val scroll = ScrollView(context)
+        scroll.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        val content = LinearLayout(context)
+        content.orientation = LinearLayout.VERTICAL
+        content.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        content.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 80))
+
+        val top = LinearLayout(context)
+        top.orientation = LinearLayout.HORIZONTAL
+        top.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        top.setPadding(0, 0, 0, dp(context, 16))
+        top.addView(backButton(context) { switchTab(TAB_HOME) })
+        val title = tv(context, "Review", 18f, C_TEXT(), true)
+        title.setPadding(dp(context, 10), 0, 0, 0)
+        title.gravity = Gravity.CENTER_VERTICAL
+        top.addView(title)
+        content.addView(top)
+
+        val due = dueEntries()
+        val total = due.size
+        content.addView(tv(
+            context,
+            if (total > 0) "$total word(s) due now — tap a card to reveal, then it reschedules" else "All caught up — nothing due right now.",
+            13f, C_MUTED(), false
+        ).apply { setPadding(0, 0, 0, dp(context, 12)) })
+
+        if (total == 0) {
+            content.addView(primaryButton(context, "Back to Home") { switchTab(TAB_HOME) })
+            scroll.addView(content)
+            root.addView(scroll)
+            return root
+        }
+
+        var idx = 0
+        var revealed = false
+
+        val counter = tv(context, "1 / $total", 12f, C_MUTED(), true)
+        counter.gravity = Gravity.CENTER
+        counter.setPadding(0, 0, 0, dp(context, 10))
+        content.addView(counter)
+
+        val stage = LinearLayout(context)
+        stage.orientation = LinearLayout.VERTICAL
+        stage.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        stage.setPadding(dp(context, 24), dp(context, 24), dp(context, 24), dp(context, 24))
+        stage.gravity = Gravity.CENTER
+        stage.background = roundedBg(context, C_CARD(), C_BORDER())
+
+        val hanzi = tv(context, due[0].first.hanzi, 64f, C_HANZI(), true)
+        hanzi.gravity = Gravity.CENTER
+        stage.addView(hanzi)
+        val pinyin = tv(context, due[0].first.pinyin, 18f, C_PINYIN(), false)
+        pinyin.gravity = Gravity.CENTER
+        pinyin.setPadding(0, dp(context, 4), 0, 0)
+        stage.addView(pinyin)
+        val hint = tv(context, "Tap card to reveal meaning", 11f, C_MUTED(), false)
+        hint.gravity = Gravity.CENTER
+        hint.setPadding(0, dp(context, 8), 0, dp(context, 10))
+        stage.addView(hint)
+        val meaning = tv(context, due[0].first.meaning, 16f, C_ACCENT(), true)
+        meaning.gravity = Gravity.CENTER
+        meaning.setPadding(0, 0, 0, dp(context, 10))
+        meaning.visibility = View.GONE
+        stage.addView(meaning)
+
+        stage.setOnClickListener {
+            if (!revealed) {
+                hanzi.animate().rotationY(90f).setDuration(200).withEndAction {
+                    hanzi.visibility = View.GONE
+                    pinyin.visibility = View.GONE
+                    hint.visibility = View.GONE
+                    meaning.rotationY = 270f
+                    meaning.visibility = View.VISIBLE
+                    meaning.animate().rotationY(360f).setDuration(200).start()
+                }.start()
+                revealed = true
+                recordReview(due[idx].first.hanzi) // bump box + reschedule
+            } else {
+                meaning.animate().rotationY(90f).setDuration(200).withEndAction {
+                    meaning.visibility = View.GONE
+                    hanzi.rotationY = 270f
+                    hanzi.visibility = View.VISIBLE
+                    pinyin.visibility = View.VISIBLE
+                    hint.visibility = View.VISIBLE
+                    hanzi.animate().rotationY(360f).setDuration(200).start()
+                }.start()
+                revealed = false
+            }
+        }
+        content.addView(stage)
+
+        var btnNext = primaryButton(context, "Next") {}
+        btnNext.setOnClickListener {
+            if (idx >= total - 1) {
+                switchTab(TAB_HOME)
+            } else {
+                idx++
+                revealed = false
+                meaning.visibility = View.GONE
+                hanzi.rotationY = 0f
+                pinyin.rotationY = 0f
+                meaning.rotationY = 0f
+                hanzi.visibility = View.VISIBLE
+                pinyin.visibility = View.VISIBLE
+                hint.visibility = View.VISIBLE
+                hanzi.text = due[idx].first.hanzi
+                pinyin.text = due[idx].first.pinyin
+                meaning.text = due[idx].first.meaning
+                counter.text = "${idx + 1} / $total"
+                btnNext.text = if (idx >= total - 1) "Finish review" else "Next"
+            }
+        }
+        content.addView(btnNext)
+
+        scroll.addView(content)
+        root.addView(scroll)
+        return root
+    }
+
     private fun currentStats(): PlayerStats {
         val lessonsDone = HskData.modules().sumOf { mod ->
             mod.lessons.count { prefs.getBoolean("done:${it.id}", false) }
@@ -492,6 +683,25 @@ class MainActivity : Activity() {
         }
         contCard.addView(nextBtn)
         content.addView(contCard)
+
+        // Review (spaced repetition) — always opens the review screen, which
+        // shows a Back button when nothing is due.
+        val revCard = card(context)
+        revCard.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        val rTitle = tv(context, "Review due", 16f, C_TEXT(), true)
+        rTitle.setPadding(0, 0, 0, dp(context, 12))
+        revCard.addView(rTitle)
+        val dueNow = dueCount()
+        revCard.addView(tv(
+            context,
+            if (dueNow > 0) "$dueNow word(s) due now" else "Nothing due — all caught up",
+            13f, C_MUTED(), false
+        ).apply { setPadding(0, 0, 0, dp(context, 12)) })
+        revCard.addView(primaryButton(context, "Start review") { openReview() })
+        content.addView(revCard)
 
         // HSK course cards
         content.addView(tv(context, "HSK courses", 16f, C_TEXT(), true).apply {
@@ -855,6 +1065,7 @@ class MainActivity : Activity() {
                 // Mark this word as reviewed and update progress
                 if (completed.add(currentIdx)) {
                     saveCompleted(lesson.id, completed)
+                    recordReview(lesson.words[currentIdx].hanzi)
                     if (completed.size >= totalWords) {
                         prefs.edit().putBoolean("done:${lesson.id}", true).apply()
                     }

@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).parents[1]
 text = (root / "app/src/main/kotlin/com/ciel/hsk/MainActivity.kt").read_text()
 practice = (root / "app/src/main/kotlin/com/ciel/hsk/PracticeData.kt").read_text()
+srs = (root / "app/src/main/kotlin/com/ciel/hsk/Srs.kt").read_text()
 
 assert 'arrayOf("Home", "Learn", "Vocab", "Practice", "Profile")' in text
 assert 'TAB_PRACTICE -> container.addView(buildPracticeHub(this))' in text
@@ -56,4 +57,13 @@ assert 'val tab = if (currentTab in 0..4) currentTab else TAB_PROFILE' in text
 assert 'val scrollY = currentScrollView()?.scrollY ?: 0' in text
 assert 'recreate()' not in text
 
-print("PASS: equal nav columns; in-place theme switch with scroll; all practice and reward checks")
+# SRS (spaced repetition): pure scheduler + storage + review UI
+assert (root / 'app/src/main/kotlin/com/ciel/hsk/Srs.kt').is_file()
+assert 'fun nextBox' in srs and 'fun dueMillis' in srs and 'fun isDue' in srs
+assert 'recordReview(lesson.words[currentIdx].hanzi)' in text
+assert 'private fun buildReviewScreen' in text
+assert 'private fun dueCount' in text
+assert '"srs_all"' in text
+assert 'primaryButton(context, "Start review") { openReview() }' in text
+
+print("PASS: equal nav columns; in-place theme switch with scroll; all practice and reward checks; srs review")
